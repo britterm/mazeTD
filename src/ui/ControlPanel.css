@@ -1,0 +1,159 @@
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  height: 100%;
+  overflow-y: auto;
+  background: #121820;
+  border-left: 2px solid #1f2532;
+}
+
+.panel-section {
+  background: #161d28;
+  border: 2px solid #222b3a;
+  padding: 14px;
+  box-shadow: 0 6px 0 #0c1119;
+}
+
+.panel-header {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #82a4ff;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.start-btn {
+  width: 100%;
+  padding: 12px 0;
+  font-size: 12px;
+  letter-spacing: 1px;
+  background: linear-gradient(180deg, #3d8bff 0%, #2555ff 100%);
+  border: 0;
+  color: #f6f7ff;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #172b64;
+}
+
+.start-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wave-preview {
+  margin-top: 14px;
+  background: #121722;
+  border: 1px solid #263149;
+  padding: 10px;
+}
+
+.wave-preview ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wave-preview li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #c1cbf5;
+}
+
+.wave-preview .boss-line {
+  color: #ff8ba7;
+}
+
+.tower-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.tower-card {
+  background: #1a2230;
+  border: 2px solid #293549;
+  color: #f8faff;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tower-card.is-selected {
+  border-color: #5ad6ff;
+  box-shadow: 0 0 0 2px rgba(90, 214, 255, 0.35);
+}
+
+.tower-name {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tower-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #9aa6c0;
+}
+
+.tower-desc {
+  font-size: 10px;
+  color: #cfd6f5;
+  line-height: 1.4;
+}
+
+.active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.active-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #121926;
+  border: 1px solid #253144;
+  padding: 10px;
+}
+
+.active-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.active-meta {
+  font-size: 10px;
+  color: #9aa6c0;
+}
+
+.upgrade-btn {
+  background: linear-gradient(180deg, #51c16f 0%, #2f8f58 100%);
+  border: none;
+  color: #f8f8ff;
+  padding: 6px 10px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  font-size: 10px;
+  color: #7f8aa8;
+  margin: 0;
+}

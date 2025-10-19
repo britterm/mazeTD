@@ -1,0 +1,194 @@
+import { TowerDefinition } from "../entities/tower";
+
+export const towerDefinitions: TowerDefinition[] = [
+  {
+    id: "wall",
+    name: "Wall",
+    description: "Blocks enemy movement and shapes the maze.",
+    category: "blocker",
+    attackMode: "instant",
+    targeting: "first",
+    baseCooldown: 0,
+    passable: false,
+    levels: [
+      {
+        level: 1,
+        cost: 10,
+        range: 0,
+        damage: 0,
+        fireRate: 0
+      },
+      {
+        level: 2,
+        cost: 200,
+        range: 0,
+        damage: 0,
+        fireRate: 0
+      }
+    ]
+  },
+  {
+    id: "lightning",
+    name: "Lightning Coil",
+    description: "Fires instant bolts at leading targets.",
+    category: "damage",
+    attackMode: "instant",
+    targeting: "first",
+    baseCooldown: 0,
+    passable: false,
+    levels: [
+      {
+        level: 1,
+        cost: 40,
+        range: 1.25,
+        damage: 18,
+        fireRate: 1.6,
+        instantHit: true
+      },
+      {
+        level: 2,
+        cost: 200,
+        range: 1.50,
+        damage: 28,
+        fireRate: 1.8,
+        instantHit: true
+      },
+      {
+        level: 3,
+        cost: 350,
+        range: 1.75,
+        damage: 36,
+        fireRate: 2,
+        instantHit: true,
+        effects: ["chain-prep"]
+      }
+    ]
+  },
+  {
+    id: "fire",
+    name: "Fire Spire",
+    description: "Launches fireballs that deal splash damage.",
+    category: "damage",
+    attackMode: "projectile",
+    targeting: "closest",
+    baseCooldown: 0,
+    passable: false,
+    levels: [
+      {
+        level: 1,
+        cost: 45,
+        range: 1,
+        damage: 14,
+        fireRate: 1.2,
+        splashRadius: 1.1,
+        projectileSpeed: 6
+      },
+      {
+        level: 2,
+        cost: 200,
+        range: 1.1,
+        damage: 22,
+        fireRate: 1.3,
+        splashRadius: 1.35,
+        projectileSpeed: 7
+      },
+      {
+        level: 3,
+        cost: 350,
+        range: 1.2,
+        damage: 32,
+        fireRate: 1.45,
+        splashRadius: 1.6,
+        projectileSpeed: 8
+      }
+    ]
+  },
+  {
+    id: "ice",
+    name: "Cryo Totem",
+    description: "Blasts frost orbs that slow enemies in an area.",
+    category: "control",
+    attackMode: "projectile",
+    targeting: "closest",
+    baseCooldown: 0,
+    passable: false,
+    levels: [
+      {
+        level: 1,
+        cost: 50,
+        range: 1.25,
+        damage: 8,
+        fireRate: 1,
+        splashRadius: 0.4,
+        projectileSpeed: 8,
+        slowFactor: 0.6,
+        slowDuration: 1.8
+      },
+      {
+        level: 2,
+        cost: 200,
+        range: 1.35,
+        damage: 12,
+        fireRate: 1.1,
+        splashRadius: 0.5,
+        projectileSpeed: 9,
+        slowFactor: 0.5,
+        slowDuration: 2.2
+      },
+      {
+        level: 3,
+        cost: 350,
+        range: 1.45,
+        damage: 16,
+        fireRate: 1.2,
+        splashRadius: .6,
+        projectileSpeed: 10,
+        slowFactor: 0.45,
+        slowDuration: 2.0
+      }
+    ]
+  },
+  {
+    id: "earth",
+    name: "Earth Shaker",
+    description: "Hurls stones that damage and briefly stun a target.",
+    category: "damage",
+    attackMode: "projectile",
+    targeting: "strongest",
+    baseCooldown: 0,
+    passable: false,
+    levels: [
+      {
+        level: 1,
+        cost: 55,
+        range: 1.8,
+        damage: 20,
+        fireRate: 0.9,
+        projectileSpeed: 10,
+        stunDuration: 0.3
+      },
+      {
+        level: 2,
+        cost: 200,
+        range: 2.1,
+        damage: 28,
+        fireRate: 1,
+        projectileSpeed: 11,
+        stunDuration: 0.35
+      },
+      {
+        level: 3,
+        cost: 350,
+        range: 2.4,
+        damage: 38,
+        fireRate: 1.1,
+        projectileSpeed: 11.5,
+        stunDuration: 0.4
+      }
+    ]
+  }
+];
+
+export const towerDefinitionMap = new Map(
+  towerDefinitions.map((def) => [def.id, def])
+);

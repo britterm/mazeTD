@@ -1,0 +1,125 @@
+.tower-menu {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  min-width: 260px;
+  max-width: 320px;
+  background: rgba(18, 24, 32, 0.92);
+  border: 2px solid #2c374a;
+  padding: 16px;
+  color: #f3f3ff;
+  font-size: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.tower-menu__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tower-menu__name {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.tower-menu__subtitle {
+  font-size: 11px;
+  color: #adb8d6;
+}
+
+.tower-menu__close {
+  background: transparent;
+  border: none;
+  color: #adb8d6;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tower-menu__description {
+  margin: 0 0 12px;
+  color: #ccd4ed;
+  font-size: 11px;
+}
+
+.tower-menu__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.tower-menu__stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.tower-menu__stat-label {
+  color: #90a1c1;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+
+.tower-menu__stat-values {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: "Press Start 2P", "Courier New", monospace;
+}
+
+.tower-menu__stat-current {
+  color: #f5f6ff;
+}
+
+.tower-menu__stat-next {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: #b8c7ff;
+}
+
+.tower-menu__stat-arrow {
+  color: #f5f6ff;
+}
+
+.tower-menu__stat-diff {
+  font-size: 10px;
+  padding-left: 2px;
+}
+
+.tower-menu__stat-diff.is-positive {
+  color: #6be49c;
+}
+
+.tower-menu__stat-diff.is-negative {
+  color: #ff8ba7;
+}
+
+.tower-menu__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tower-menu__button {
+  flex: 1;
+  background: linear-gradient(180deg, #3d8bff 0%, #2555ff 100%);
+  border: none;
+  color: #f8f8ff;
+  padding: 10px 12px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+}
+
+.tower-menu__button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tower-menu__button--secondary {
+  background: linear-gradient(180deg, #7050ff 0%, #5a3ce6 100%);
+}

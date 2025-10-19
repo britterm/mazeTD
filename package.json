@@ -1,0 +1,32 @@
+{
+  "name": "maze-td",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "simulate": "ts-node simulations/run-simulations.ts"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.35.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.1",
+    "vitest": "^1.5.2",
+    "@types/node": "^20.11.30",
+    "ts-node": "^10.9.2"
+  }
+}
