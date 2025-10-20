@@ -13,6 +13,13 @@ interface CanvasTransform {
 }
 
 const SQRT3 = Math.sqrt(3);
+const RANGE_MINIMUMS: Record<TowerType, number> = {
+  wall: 0,
+  lightning: 2.5,
+  fire: 2.25,
+  ice: 2.25,
+  earth: 2.4
+};
 
 const TOWER_COLOR_PALETTE: Record<TowerType, string[]> = {
   wall: ['#6c757d', '#7f8996', '#8a94a1'],
@@ -236,7 +243,7 @@ const drawCore = (
   ctx.save();
   ctx.beginPath();
   for (let i = 0; i < 6; i += 1) {
-    const angle = (Math.PI / 3) * i;
+    const angle = (Math.PI / 3) * i + Math.PI / 6;
     const px = screenX + Math.cos(angle) * radius;
     const py = screenY + Math.sin(angle) * radius;
     if (i === 0) {
@@ -285,7 +292,7 @@ const drawCells = (
 
     ctx.beginPath();
     for (let i = 0; i < 6; i += 1) {
-      const angle = (Math.PI / 3) * i;
+      const angle = (Math.PI / 3) * i + Math.PI / 6;
       const px = screenX + Math.cos(angle) * radius;
       const py = screenY + Math.sin(angle) * radius;
       if (i === 0) {
@@ -404,7 +411,8 @@ const drawTowers = (
     const def = towerDefinitionMap.get(towerId);
     const levelConfig = def?.levels.find((lvl) => lvl.level === tower.level);
     const baseRange = levelConfig?.range ?? 0;
-    const rangeCells = baseRange ?? 0;
+    const minRange = RANGE_MINIMUMS[towerId] ?? baseRange;
+    const rangeCells = Math.max(baseRange, minRange);
 
     const palette = TOWER_COLOR_PALETTE[towerId] ?? ['#ffffff'];
     const levelIndex = Math.max(0, Math.min((tower.level ?? 1) - 1, palette.length - 1));
@@ -578,5 +586,6 @@ const drawProjectiles = (
     ctx.fill();
   }
 };
+
 
 

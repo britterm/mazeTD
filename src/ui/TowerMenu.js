@@ -3,26 +3,12 @@ import { useMemo } from "react";
 import { useGame } from "../game/GameProvider";
 import { towerDefinitionMap } from "../game/config/towers";
 import "./TowerMenu.css";
-const RANGE_MINIMUMS = {
-    wall: 0,
-    lightning: 2.5,
-    fire: 2.25,
-    ice: 2.25,
-    earth: 2.4
-};
 const formatNumber = (value, fractionDigits = 1) => {
     if (value == null) {
         return "-";
     }
     const rounded = Math.round(value * Math.pow(10, fractionDigits)) / Math.pow(10, fractionDigits);
     return fractionDigits === 0 ? String(rounded) : rounded.toFixed(fractionDigits);
-};
-const getRangeCells = (towerType, level) => {
-    if (!level) {
-        return 0;
-    }
-    const min = RANGE_MINIMUMS[towerType] ?? level.range;
-    return Math.max(level.range ?? 0, min);
 };
 const defaultFormatter = (value) => formatNumber(value, 2);
 const StatRow = ({ label, current, next, formatter = defaultFormatter, suffix = "" }) => {
@@ -65,7 +51,7 @@ export const TowerMenu = () => {
             }
             entries.push({ id, label, current, next, formatter, suffix });
         };
-        addStat("range", "Range (cells)", getRangeCells(towerType, currentLevel), nextLevel ? getRangeCells(towerType, nextLevel) : undefined, (value) => formatNumber(value, 2));
+        addStat("range", "Range (cells)", currentLevel?.range, nextLevel?.range, (value) => formatNumber(value, 2));
         addStat("damage", "Damage", currentLevel?.damage, nextLevel?.damage, (value) => formatNumber(value, 0));
         addStat("fireRate", "Fire Rate", currentLevel?.fireRate, nextLevel?.fireRate, (value) => formatNumber(value, 2), "/s");
         addStat("projectileSpeed", "Projectile Speed", currentLevel?.projectileSpeed, nextLevel?.projectileSpeed, (value) => (value != null ? formatNumber(value, 2) : "-"), "");

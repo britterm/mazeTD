@@ -15,9 +15,13 @@ export const ControlPanel = () => {
     return (_jsxs("div", { className: "control-panel", children: [_jsxs("section", { className: "panel-section", children: [_jsx("div", { className: "panel-header", children: "Wave Control" }), _jsx("button", { className: "start-btn", disabled: snapshot.mode !== "build", onClick: handleStartWave, children: snapshot.mode === "build" ? "Start Wave" : "In Progress" }), snapshot.upcomingWave ? (_jsxs("div", { className: "wave-preview", children: [_jsx("div", { className: "preview-title", children: "Next Wave" }), _jsxs("ul", { children: [snapshot.upcomingWave.segments.map((segment, index) => (_jsxs("li", { children: [_jsx("span", { children: segment.enemyId }), _jsxs("span", { children: ["x", segment.quantity] })] }, `${segment.enemyId}-${index}`))), snapshot.upcomingWave.boss ? (_jsxs("li", { className: "boss-line", children: [_jsxs("span", { children: ["BOSS: ", snapshot.upcomingWave.boss.enemyId] }), _jsxs("span", { children: ["x", snapshot.upcomingWave.boss.quantity] })] })) : null] })] })) : null] }), _jsxs("section", { className: "panel-section", children: [_jsx("div", { className: "panel-header", children: "Towers" }), _jsx("div", { className: "tower-grid", children: towerDefinitions.map((tower) => {
                             const baseLevel = tower.levels[0];
                             const isSelected = selectedTower === tower.id;
+                            const existingCount = snapshot.towers.filter((placed) => placed.type === tower.id).length;
+                            const ramp = tower.id === "wall" ? 0 : existingCount * 10;
+                            const baseCost = baseLevel?.cost ?? 0;
+                            const costLabel = ramp > 0 ? `${baseCost} + ${ramp}` : `${baseCost}`;
                             return (_jsxs("button", { className: `tower-card ${isSelected ? "is-selected" : ""}`, onClick: () => {
                                     setActiveTowerId(null);
                                     setSelectedTower(tower.id);
-                                }, children: [_jsx("div", { className: "tower-name", children: tower.name }), _jsxs("div", { className: "tower-meta", children: [_jsxs("span", { className: "tower-cost", children: [baseLevel?.cost ?? "-", " cr"] }), _jsx("span", { className: "tower-type", children: tower.category })] }), _jsx("p", { className: "tower-desc", children: tower.description })] }, tower.id));
+                                }, children: [_jsx("div", { className: "tower-name", children: tower.name }), _jsxs("div", { className: "tower-meta", children: [_jsxs("span", { className: "tower-cost", children: [costLabel, " cr"] }), _jsx("span", { className: "tower-type", children: tower.category })] }), _jsx("p", { className: "tower-desc", children: tower.description })] }, tower.id));
                         }) })] })] }));
 };

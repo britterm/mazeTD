@@ -4,16 +4,9 @@ import { useGame } from "../game/GameProvider";
 import { towerDefinitionMap } from "../game/config/towers";
 import { enemyDefinitionMap } from "../game/config/enemies";
 const SQRT3 = Math.sqrt(3);
-const RANGE_MINIMUMS = {
-    wall: 0,
-    lightning: 2.5,
-    fire: 2.25,
-    ice: 2.25,
-    earth: 2.4
-};
 const TOWER_COLOR_PALETTE = {
     wall: ['#6c757d', '#7f8996', '#8a94a1'],
-    lightning: ['#ffe066', '#ffd43b', '#fcc419'],
+    lightning: ['#c76dff', '#a153ff', '#7b3bed'],
     fire: ['#ff7849', '#ff5c2e', '#ff4314'],
     ice: ['#7ff0ff', '#49d4ff', '#17c2ff'],
     earth: ['#c8a35a', '#b88f3f', '#a87d2b']
@@ -198,7 +191,7 @@ const drawCore = (ctx, core, cellRadius, scale, offsetX, offsetY) => {
     ctx.save();
     ctx.beginPath();
     for (let i = 0; i < 6; i += 1) {
-        const angle = (Math.PI / 3) * i + Math.PI / 6;
+        const angle = (Math.PI / 3) * i;
         const px = screenX + Math.cos(angle) * radius;
         const py = screenY + Math.sin(angle) * radius;
         if (i === 0) {
@@ -237,7 +230,7 @@ const drawCells = (ctx, cells, path, engine, scale, offsetX, offsetY) => {
         const isPath = pathKeys.has(engine.keyOf(cell));
         ctx.beginPath();
         for (let i = 0; i < 6; i += 1) {
-            const angle = (Math.PI / 3) * i + Math.PI / 6;
+            const angle = (Math.PI / 3) * i;
             const px = screenX + Math.cos(angle) * radius;
             const py = screenY + Math.sin(angle) * radius;
             if (i === 0) {
@@ -323,8 +316,7 @@ const drawTowers = (ctx, snapshot, engine, scale, offsetX, offsetY, activeTowerI
         const def = towerDefinitionMap.get(towerId);
         const levelConfig = def?.levels.find((lvl) => lvl.level === tower.level);
         const baseRange = levelConfig?.range ?? 0;
-        const minRange = RANGE_MINIMUMS[towerId] ?? baseRange;
-        const rangeCells = Math.max(baseRange, minRange);
+        const rangeCells = baseRange ?? 0;
         const palette = TOWER_COLOR_PALETTE[towerId] ?? ['#ffffff'];
         const levelIndex = Math.max(0, Math.min((tower.level ?? 1) - 1, palette.length - 1));
         const bodyColor = palette[levelIndex];
@@ -335,12 +327,14 @@ const drawTowers = (ctx, snapshot, engine, scale, offsetX, offsetY, activeTowerI
             const worldRadius = rangeCells * cellRadius * SQRT3;
             const screenRadius = worldRadius * scale;
             ctx.save();
-            ctx.globalAlpha = rangeAlpha * 0.08;
+            const fillAlpha = rangeAlpha * (isActive ? 0.08 : 0.04);
+            ctx.globalAlpha = fillAlpha;
             ctx.fillStyle = auraColor;
             ctx.beginPath();
             ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
             ctx.fill();
-            ctx.globalAlpha = rangeAlpha * (isActive ? 0.26 : 0.18);
+            const strokeAlpha = rangeAlpha * (isActive ? 0.26 : 0.09);
+            ctx.globalAlpha = strokeAlpha;
             ctx.lineWidth = isActive ? 3 : 2;
             ctx.strokeStyle = auraColor;
             ctx.beginPath();

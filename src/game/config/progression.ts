@@ -6,8 +6,8 @@ export interface ProgressionConfig {
 }
 
 export const defaultProgression: ProgressionConfig = {
-  healthScaling: (round) => 1 + round * 0.15,
-  speedScaling: (round) => 1 + Math.min(round * 0.02, 0.25),
-  rewardScaling: (round) => 1 + round * 0.08,
+  healthScaling: (round) => 1.25 * (1 + round * 0.15),
+  speedScaling: (round) => 0.85 * (1 + Math.min(round * 0.02, 0.25)),
+  rewardScaling: (round) => (2 / 3) * (1 + round * 0.08),
   bossHealthMultiplier: (round) => 4 + round * 0.6
 };

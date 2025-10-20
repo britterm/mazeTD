@@ -3,7 +3,7 @@ export const enemyDefinitions = [
         id: "crawler",
         name: "Crawler",
         category: "grunt",
-        baseHealth: 45,
+        baseHealth: 50,
         baseSpeed: 0.9,
         reward: 3,
         size: 1
@@ -31,7 +31,7 @@ export const enemyDefinitions = [
         id: "swarm",
         name: "Skitter",
         category: "swarm",
-        baseHealth: 18,
+        baseHealth: 23,
         baseSpeed: 1.2,
         reward: 2,
         size: 0.8

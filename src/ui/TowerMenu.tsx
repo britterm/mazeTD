@@ -5,13 +5,6 @@ import { TowerLevel } from "../game/entities/tower";
 import { TowerType } from "../core/types";
 import "./TowerMenu.css";
 
-const RANGE_MINIMUMS: Record<TowerType, number> = {
-  wall: 0,
-  lightning: 2.5,
-  fire: 2.25,
-  ice: 2.25,
-  earth: 2.4
-};
 
 const formatNumber = (value: number | undefined, fractionDigits = 1) => {
   if (value == null) {
@@ -21,13 +14,6 @@ const formatNumber = (value: number | undefined, fractionDigits = 1) => {
   return fractionDigits === 0 ? String(rounded) : rounded.toFixed(fractionDigits);
 };
 
-const getRangeCells = (towerType: TowerType, level?: TowerLevel) => {
-  if (!level) {
-    return 0;
-  }
-  const min = RANGE_MINIMUMS[towerType] ?? level.range;
-  return Math.max(level.range ?? 0, min);
-};
 
 type StatEntry = {
   id: string;
@@ -115,8 +101,8 @@ export const TowerMenu = () => {
     addStat(
       "range",
       "Range (cells)",
-      getRangeCells(towerType, currentLevel),
-      nextLevel ? getRangeCells(towerType, nextLevel) : undefined,
+      currentLevel?.range,
+      nextLevel?.range,
       (value) => formatNumber(value, 2)
     );
     addStat("damage", "Damage", currentLevel?.damage, nextLevel?.damage, (value) => formatNumber(value, 0));

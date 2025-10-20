@@ -13,7 +13,7 @@ export const towerDefinitions: TowerDefinition[] = [
     levels: [
       {
         level: 1,
-        cost: 10,
+        cost: 5,
         range: 0,
         damage: 0,
         fireRate: 0
@@ -56,7 +56,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 3,
         cost: 350,
-        range: 1.75,
+        range: 2,
         damage: 36,
         fireRate: 2,
         instantHit: true,
@@ -77,7 +77,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 1,
         cost: 45,
-        range: 1,
+        range: 1.25,
         damage: 14,
         fireRate: 1.2,
         splashRadius: 1.1,
@@ -86,7 +86,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 2,
         cost: 200,
-        range: 1.1,
+        range: 1.375,
         damage: 22,
         fireRate: 1.3,
         splashRadius: 1.35,
@@ -95,7 +95,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 3,
         cost: 350,
-        range: 1.2,
+        range: 1.5,
         damage: 32,
         fireRate: 1.45,
         splashRadius: 1.6,
@@ -161,7 +161,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 1,
         cost: 55,
-        range: 1.8,
+        range: 1.7,
         damage: 20,
         fireRate: 0.9,
         projectileSpeed: 10,
@@ -170,7 +170,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 2,
         cost: 200,
-        range: 2.1,
+        range: 1.9,
         damage: 28,
         fireRate: 1,
         projectileSpeed: 11,
@@ -179,7 +179,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 3,
         cost: 350,
-        range: 2.4,
+        range: 2.25,
         damage: 38,
         fireRate: 1.1,
         projectileSpeed: 11.5,
