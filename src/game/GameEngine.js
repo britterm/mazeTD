@@ -111,11 +111,13 @@ export class GameEngine {
         if (!level) {
             return { success: false, reason: "Tower missing base level" };
         }
-        if (this.state.credits < level.cost) {
+        const existingCount = Array.from(this.state.towers.values()).filter((tower) => tower.towerType === def.id).length;
+        const adjustedCost = def.id === "wall" ? level.cost : level.cost + existingCount * 10;
+        if (this.state.credits < adjustedCost) {
             return { success: false, reason: "Not enough credits" };
         }
         const towerId = `tower-${this.state.nextTowerId++}`;
-        this.state.credits -= level.cost;
+        this.state.credits -= adjustedCost;
         const worldPosition = this.grid.toWorld(coord);
         const tower = {
             id: towerId,
@@ -183,6 +185,9 @@ export class GameEngine {
         return this.calculateSellValue(def, tower.level);
     }
     calculateSellValue(def, level) {
+        if (def.id === 'wall') {
+            return 2;
+        }
         let total = 0;
         for (const lvl of def.levels) {
             if (lvl.level <= level) {
@@ -192,14 +197,25 @@ export class GameEngine {
         return Math.round(total * 0.6);
     }
     tick(deltaMs) {
+        if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
+            return;
+        }
         if (this.state.mode === "defeat") {
             return;
         }
+        const maxStep = 100;
+        let remaining = deltaMs;
+        while (remaining > 0) {
+            const step = Math.min(remaining, maxStep);
+            if (this.state.mode === "combat") {
+                this.advanceWave(step);
+                this.updateEnemies(step);
+                this.updateTowers(step);
+                this.updateProjectiles(step);
+            }
+            remaining -= step;
+        }
         if (this.state.mode === "combat") {
-            this.advanceWave(deltaMs);
-            this.updateEnemies(deltaMs);
-            this.updateTowers(deltaMs);
-            this.updateProjectiles(deltaMs);
             this.cleanupEffects();
             this.checkVictoryConditions();
             this.notify();
@@ -310,6 +326,7 @@ export class GameEngine {
             slowedUntil: 0,
             slowFactor: 1,
             stunnedUntil: 0,
+            stunImmuneUntil: 0,
             attackingCore: false,
             nextCoreAttackAt: 0
         };
@@ -555,15 +572,8 @@ export class GameEngine {
             y: Math.sin(angle) * baseRadius
         };
     }
-    getEffectiveRange(def, level) {
-        const minByTower = {
-            lightning: 2.5,
-            fire: 2.25,
-            ice: 2.25,
-            earth: 2.4
-        };
-        const minimum = minByTower[def.id] ?? level.range;
-        return Math.max(level.range, minimum);
+    getEffectiveRange(_def, level) {
+        return level.range;
     }
     getTowerLevel(def, level) {
         return def.levels.find((l) => l.level === level);
@@ -605,7 +615,7 @@ export class GameEngine {
             }
             return null;
         }
-        let best = null;
+        let best;
         for (const enemy of inRange) {
             if (!best) {
                 best = enemy;
@@ -723,10 +733,13 @@ export class GameEngine {
         for (const projectile of Array.from(this.state.projectiles.values())) {
             projectile.position.x += projectile.velocity.x * dt;
             projectile.position.y += projectile.velocity.y * dt;
-            const target = this.state.enemies.get(projectile.targetId);
+            let target = this.state.enemies.get(projectile.targetId);
             if (!target) {
-                this.state.projectiles.delete(projectile.id);
-                continue;
+                target = this.retargetProjectile(projectile);
+                if (!target) {
+                    this.state.projectiles.delete(projectile.id);
+                    continue;
+                }
             }
             const dist = Math.hypot(target.position.x - projectile.position.x, target.position.y - projectile.position.y);
             if (dist < this.topology.cellRadius * 0.2) {
@@ -734,6 +747,46 @@ export class GameEngine {
                 this.state.projectiles.delete(projectile.id);
             }
         }
+    }
+    retargetProjectile(projectile) {
+        const speed = Math.hypot(projectile.velocity.x, projectile.velocity.y);
+        if (speed < 0.0001) {
+            return undefined;
+        }
+        let best;
+        let bestScore = Number.POSITIVE_INFINITY;
+        for (const enemy of this.state.enemies.values()) {
+            if (enemy.id === projectile.targetId) {
+                continue;
+            }
+            const dx = enemy.position.x - projectile.position.x;
+            const dy = enemy.position.y - projectile.position.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance <= this.topology.cellRadius * 0.1) {
+                continue;
+            }
+            const forward = distance > 0
+                ? (dx * projectile.velocity.x + dy * projectile.velocity.y) / (distance * speed)
+                : 1;
+            if (forward <= 0) {
+                continue;
+            }
+            const score = distance / Math.max(forward, 0.25);
+            if (score < bestScore) {
+                best = enemy;
+                bestScore = score;
+            }
+        }
+        if (!best) {
+            return undefined;
+        }
+        const dx = best.position.x - projectile.position.x;
+        const dy = best.position.y - projectile.position.y;
+        const distance = Math.max(Math.hypot(dx, dy), 0.0001);
+        projectile.velocity.x = (dx / distance) * speed;
+        projectile.velocity.y = (dy / distance) * speed;
+        projectile.targetId = best.id;
+        return best;
     }
     applyProjectileImpact(projectile, target) {
         this.applyDamage(target, projectile.damage, projectile.towerId);
@@ -772,8 +825,17 @@ export class GameEngine {
         enemy.effects.push({ type: "slow", magnitude: factor, expiresAt });
     }
     applyStun(enemy, duration) {
-        const expiresAt = this.now() + duration * 1000;
+        const now = this.now();
+        if (enemy.stunImmuneUntil > now) {
+            return;
+        }
+        const expiresAt = now + duration * 1000;
         enemy.effects.push({ type: "stun", magnitude: 0, expiresAt });
+        const def = enemyDefinitionMap.get(enemy.enemyId);
+        if (def?.category === "boss") {
+            const immunityExtension = duration * 1000 * 3;
+            enemy.stunImmuneUntil = Math.max(enemy.stunImmuneUntil, now + immunityExtension);
+        }
     }
     debugLog(type, payload) {
         if (!this.debug.enabled) {
@@ -805,6 +867,7 @@ export class GameEngine {
             this.state.round += 1;
             this.state.credits += currentWave.definition.rewardBonus;
             this.state.currentWave = undefined;
+            this.state.projectiles.clear();
             this.notify();
         }
     }
