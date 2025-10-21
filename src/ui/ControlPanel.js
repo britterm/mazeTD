@@ -16,7 +16,7 @@ export const ControlPanel = () => {
                             const baseLevel = tower.levels[0];
                             const isSelected = selectedTower === tower.id;
                             const existingCount = snapshot.towers.filter((placed) => placed.type === tower.id).length;
-                            const ramp = tower.id === "wall" ? 0 : existingCount * 10;
+                            const ramp = tower.id === "wall" ? 0 : existingCount * 5;
                             const baseCost = baseLevel?.cost ?? 0;
                             const costLabel = ramp > 0 ? `${baseCost} + ${ramp}` : `${baseCost}`;
                             return (_jsxs("button", { className: `tower-card ${isSelected ? "is-selected" : ""}`, onClick: () => {

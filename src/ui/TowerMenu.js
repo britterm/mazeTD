@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo } from "react";
 import { useGame } from "../game/GameProvider";
-import { towerDefinitionMap } from "../game/config/towers";
+import { towerDefinitionMap, towerDefinitions } from "../game/config/towers";
 import "./TowerMenu.css";
 const formatNumber = (value, fractionDigits = 1) => {
     if (value == null) {
@@ -21,7 +21,7 @@ const StatRow = ({ label, current, next, formatter = defaultFormatter, suffix = 
     return (_jsxs("div", { className: "tower-menu__stat", children: [_jsx("span", { className: "tower-menu__stat-label", children: label }), _jsxs("div", { className: "tower-menu__stat-values", children: [_jsxs("span", { className: "tower-menu__stat-current", children: [currentText, suffix] }), nextText != null ? (_jsxs("span", { className: "tower-menu__stat-next", children: [_jsx("span", { className: "tower-menu__stat-arrow", children: "\u2192" }), " ", nextText, suffix, diff != null && Math.abs(diff) > 0.001 ? (_jsxs("span", { className: `tower-menu__stat-diff ${diff >= 0 ? "is-positive" : "is-negative"}`, children: [diff >= 0 ? `+${formatter(diff)}` : formatter(diff), suffix] })) : null] })) : null] })] }));
 };
 export const TowerMenu = () => {
-    const { snapshot, activeTowerId, setActiveTowerId, upgradeTower, sellTower, getSellValue } = useGame();
+    const { snapshot, activeTowerId, setActiveTowerId, upgradeTower, convertWallTower, getWallConversionCost, sellTower, getSellValue } = useGame();
     const data = useMemo(() => {
         if (!activeTowerId) {
             return null;
@@ -61,6 +61,26 @@ export const TowerMenu = () => {
         addStat("stunDuration", "Stun Duration", currentLevel?.stunDuration, nextLevel?.stunDuration, (value) => (value != null ? formatNumber(value, 2) : "-"), "s");
         return entries;
     }, [data]);
+    const conversionOptions = useMemo(() => {
+        if (!data || data.def.id !== 'wall') {
+            return [];
+        }
+        const { tower } = data;
+        return towerDefinitions
+            .filter((definition) => definition.id !== 'wall')
+            .map((definition) => {
+            const result = getWallConversionCost(tower.id, definition.id);
+            const cost = result.cost ?? null;
+            return {
+                id: definition.id,
+                name: definition.name,
+                cost,
+                affordable: cost != null && snapshot.credits >= cost,
+                disabledReason: result.success ? null : result.reason ?? null
+            };
+        })
+            .filter((option) => option.cost != null);
+    }, [data, getWallConversionCost, snapshot.credits]);
     if (!data) {
         return null;
     }
@@ -73,6 +93,9 @@ export const TowerMenu = () => {
         }
         upgradeTower(tower.id);
     };
+    const handleConvert = (targetId) => {
+        convertWallTower(tower.id, targetId);
+    };
     const handleSell = () => {
         const result = sellTower(tower.id);
         if (result.success) {
@@ -80,5 +103,5 @@ export const TowerMenu = () => {
         }
     };
     const closeMenu = () => setActiveTowerId(null);
-    return (_jsxs("div", { className: "tower-menu", children: [_jsxs("div", { className: "tower-menu__header", children: [_jsxs("div", { children: [_jsx("h3", { className: "tower-menu__name", children: def.name }), _jsxs("span", { className: "tower-menu__subtitle", children: ["Level ", tower.level] })] }), _jsx("button", { className: "tower-menu__close", onClick: closeMenu, "aria-label": "Close", children: "x" })] }), _jsx("p", { className: "tower-menu__description", children: def.description }), _jsx("div", { className: "tower-menu__stats", children: stats.map(({ id, ...statProps }) => (_jsx(StatRow, { ...statProps }, id))) }), _jsxs("div", { className: "tower-menu__actions", children: [_jsx("button", { className: "tower-menu__button", disabled: !canUpgrade, onClick: handleUpgrade, children: nextLevel ? `Upgrade (${nextLevel.cost} cr)` : "Max Level" }), _jsxs("button", { className: "tower-menu__button tower-menu__button--secondary", onClick: handleSell, children: ["Sell (", sellValue, " cr)"] })] })] }));
+    return (_jsxs("div", { className: "tower-menu", children: [_jsxs("div", { className: "tower-menu__header", children: [_jsxs("div", { children: [_jsx("h3", { className: "tower-menu__name", children: def.name }), _jsxs("span", { className: "tower-menu__subtitle", children: ["Level ", tower.level] })] }), _jsx("button", { className: "tower-menu__close", onClick: closeMenu, "aria-label": "Close", children: "x" })] }), _jsx("p", { className: "tower-menu__description", children: def.description }), _jsx("div", { className: "tower-menu__stats", children: stats.map(({ id, ...statProps }) => (_jsx(StatRow, { ...statProps }, id))) }), conversionOptions.length > 0 ? (_jsxs("div", { className: "tower-menu__conversion", children: [_jsx("span", { className: "tower-menu__conversion-label", children: "Convert wall" }), _jsx("div", { className: "tower-menu__conversion-buttons", children: conversionOptions.map((option) => (_jsx("button", { className: "tower-menu__button tower-menu__button--conversion", disabled: !option.affordable || option.disabledReason != null, onClick: () => handleConvert(option.id), title: option.disabledReason ?? undefined, children: `Convert to ${option.name} (${option.cost} cr)` }, option.id))) })] })) : null, _jsxs("div", { className: "tower-menu__actions", children: [_jsx("button", { className: "tower-menu__button", disabled: !canUpgrade, onClick: handleUpgrade, children: nextLevel ? `Upgrade (${nextLevel.cost} cr)` : "Max Level" }), _jsxs("button", { className: "tower-menu__button tower-menu__button--secondary", onClick: handleSell, children: ["Sell (", sellValue, " cr)"] })] })] }));
 };

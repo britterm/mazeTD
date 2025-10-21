@@ -7,6 +7,8 @@ export class GameEngine {
     progression;
     waves;
     coreWorld;
+    duplicateTowerPremium = 5;
+    wallConversionDiscount = 2;
     state;
     listeners = new Set();
     debug = {
@@ -34,7 +36,7 @@ export class GameEngine {
         this.state = {
             mode: "build",
             round: 1,
-            credits: options.startingCredits ?? 150,
+            credits: options.startingCredits ?? 200,
             coreHealth: options.startingCoreHealth ?? 20,
             maxCoreHealth: options.startingCoreHealth ?? 20,
             lives: options.startingCoreHealth ?? 20,
@@ -112,7 +114,7 @@ export class GameEngine {
             return { success: false, reason: "Tower missing base level" };
         }
         const existingCount = Array.from(this.state.towers.values()).filter((tower) => tower.towerType === def.id).length;
-        const adjustedCost = def.id === "wall" ? level.cost : level.cost + existingCount * 10;
+        const adjustedCost = def.id === "wall" ? level.cost : level.cost + existingCount * this.duplicateTowerPremium;
         if (this.state.credits < adjustedCost) {
             return { success: false, reason: "Not enough credits" };
         }
@@ -156,6 +158,61 @@ export class GameEngine {
         this.notify();
         return { success: true };
     }
+    convertWallTower(towerId, targetType) {
+        const tower = this.state.towers.get(towerId);
+        if (!tower) {
+            return { success: false, reason: "Tower missing" };
+        }
+        if (tower.towerType !== "wall") {
+            return { success: false, reason: "Only walls can convert" };
+        }
+        const targetDef = this.getTowerDefinition(targetType);
+        if (!targetDef || targetDef.id === "wall") {
+            return { success: false, reason: "Invalid target tower" };
+        }
+        const baseLevel = targetDef.levels[0];
+        if (!baseLevel) {
+            return { success: false, reason: "Tower missing base level" };
+        }
+        const cost = this.calculateWallConversionCost(tower, targetDef);
+        if (cost == null) {
+            return { success: false, reason: "Conversion cost unavailable" };
+        }
+        if (this.state.credits < cost) {
+            return { success: false, reason: "Not enough credits", cost };
+        }
+        this.state.credits -= cost;
+        tower.towerType = targetDef.id;
+        tower.level = baseLevel.level;
+        tower.cooldownRemaining = 0;
+        tower.lastShotAt = 0;
+        this.grid.setOccupant(tower.coord, { entityId: tower.id, passable: targetDef.passable });
+        this.recomputePath();
+        this.notify();
+        return { success: true, cost };
+    }
+    getWallConversionCost(towerId, targetType) {
+        const tower = this.state.towers.get(towerId);
+        if (!tower) {
+            return { success: false, reason: "Tower missing" };
+        }
+        if (tower.towerType !== "wall") {
+            return { success: false, reason: "Only walls can convert" };
+        }
+        const targetDef = this.getTowerDefinition(targetType);
+        if (!targetDef || targetDef.id === "wall") {
+            return { success: false, reason: "Invalid target tower" };
+        }
+        const baseLevel = targetDef.levels[0];
+        if (!baseLevel) {
+            return { success: false, reason: "Tower missing base level" };
+        }
+        const cost = this.calculateWallConversionCost(tower, targetDef);
+        if (cost == null) {
+            return { success: false, reason: "Conversion cost unavailable" };
+        }
+        return { success: true, cost };
+    }
     sellTower(towerId) {
         const tower = this.state.towers.get(towerId);
         if (!tower) {
@@ -185,7 +242,7 @@ export class GameEngine {
         return this.calculateSellValue(def, tower.level);
     }
     calculateSellValue(def, level) {
-        if (def.id === 'wall') {
+        if (def.id === "wall") {
             return 2;
         }
         let total = 0;
@@ -195,6 +252,18 @@ export class GameEngine {
             }
         }
         return Math.round(total * 0.6);
+    }
+    calculateWallConversionCost(tower, targetDef) {
+        const baseLevel = targetDef.levels[0];
+        if (!baseLevel) {
+            return null;
+        }
+        const existingCount = Array.from(this.state.towers.values()).filter((candidate) => candidate.towerType === targetDef.id).length;
+        const baseCost = targetDef.id === "wall"
+            ? baseLevel.cost
+            : baseLevel.cost + existingCount * this.duplicateTowerPremium;
+        const netCost = Math.max(0, baseCost - this.wallConversionDiscount);
+        return netCost;
     }
     tick(deltaMs) {
         if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
@@ -584,19 +653,14 @@ export class GameEngine {
         let nearestRawCell = Number.POSITIVE_INFINITY;
         let nearestAdjustedCell = Number.POSITIVE_INFINITY;
         let nearestWorld = Number.POSITIVE_INFINITY;
+        const rangeTolerance = Math.max(Math.min(this.topology.cellRadius * 0.04, 6), 0.5);
         const inRange = enemies.filter((enemy) => {
             const rawCellDistance = this.topology.distance(tower.coord, enemy.coord);
             nearestRawCell = Math.min(nearestRawCell, rawCellDistance);
-            const distanceAdjust = enemy.progress + enemy.size * 0.5;
-            const adjustedDistance = rawCellDistance - distanceAdjust;
-            nearestAdjustedCell = Math.min(nearestAdjustedCell, adjustedDistance);
+            nearestAdjustedCell = Math.min(nearestAdjustedCell, rawCellDistance);
             const dist = Math.hypot(enemy.position.x - tower.worldPosition.x, enemy.position.y - tower.worldPosition.y);
-            const sizeWorldBuffer = enemy.size * this.topology.cellRadius * 0.5 * Math.sqrt(3);
-            nearestWorld = Math.min(nearestWorld, dist - sizeWorldBuffer);
-            if (adjustedDistance <= rangeInCells + 0.15) {
-                return true;
-            }
-            return dist <= worldRange + sizeWorldBuffer;
+            nearestWorld = Math.min(nearestWorld, dist);
+            return dist <= worldRange + rangeTolerance;
         });
         if (inRange.length === 0) {
             if (this.debug.enabled && enemies.length > 0) {
@@ -703,7 +767,8 @@ export class GameEngine {
             slowDuration: level.slowDuration,
             stunDuration: level.stunDuration,
             impactColor,
-            impactDuration
+            impactDuration,
+            lastDistance: distToEnemy
         };
         this.state.projectiles.set(projectile.id, projectile);
         this.debugLog("tower-fire", {
@@ -730,9 +795,11 @@ export class GameEngine {
     }
     updateProjectiles(deltaMs) {
         const dt = deltaMs / 1000;
+        const distanceTolerance = this.topology.cellRadius * 0.015;
         for (const projectile of Array.from(this.state.projectiles.values())) {
             projectile.position.x += projectile.velocity.x * dt;
             projectile.position.y += projectile.velocity.y * dt;
+            const previousDistance = projectile.lastDistance ?? Number.POSITIVE_INFINITY;
             let target = this.state.enemies.get(projectile.targetId);
             if (!target) {
                 target = this.retargetProjectile(projectile);
@@ -742,10 +809,20 @@ export class GameEngine {
                 }
             }
             const dist = Math.hypot(target.position.x - projectile.position.x, target.position.y - projectile.position.y);
+            const passedTarget = projectile.splashRadius != null &&
+                Number.isFinite(previousDistance) &&
+                dist > previousDistance + distanceTolerance;
+            if (passedTarget) {
+                this.applyProjectileImpact(projectile, target, { ...projectile.position });
+                this.state.projectiles.delete(projectile.id);
+                continue;
+            }
             if (dist < this.topology.cellRadius * 0.2) {
                 this.applyProjectileImpact(projectile, target);
                 this.state.projectiles.delete(projectile.id);
+                continue;
             }
+            projectile.lastDistance = dist;
         }
     }
     retargetProjectile(projectile) {
@@ -788,35 +865,45 @@ export class GameEngine {
         projectile.targetId = best.id;
         return best;
     }
-    applyProjectileImpact(projectile, target) {
-        this.applyDamage(target, projectile.damage, projectile.towerId);
-        const impactPosition = { ...target.position };
-        if (projectile.splashRadius) {
+    applyProjectileImpact(projectile, target, impactPositionOverride) {
+        const impactPosition = impactPositionOverride ? { ...impactPositionOverride } : { ...target.position };
+        const splashRadius = projectile.splashRadius;
+        const distanceToTarget = Math.hypot(target.position.x - impactPosition.x, target.position.y - impactPosition.y);
+        const directHitRadius = splashRadius ?? this.topology.cellRadius * 0.35;
+        const canDealDirect = !impactPositionOverride || distanceToTarget <= directHitRadius + 1e-6;
+        if (canDealDirect) {
+            this.applyDamage(target, projectile.damage, projectile.towerId);
+        }
+        if (splashRadius) {
             for (const enemy of this.state.enemies.values()) {
                 if (enemy.id === target.id) {
                     continue;
                 }
                 const dist = Math.hypot(enemy.position.x - impactPosition.x, enemy.position.y - impactPosition.y);
-                if (dist <= projectile.splashRadius) {
+                if (dist <= splashRadius) {
                     this.applyDamage(enemy, projectile.damage * 0.6, projectile.towerId);
                     if (projectile.slowFactor && projectile.slowDuration) {
                         this.applySlow(enemy, projectile.slowFactor, projectile.slowDuration);
                     }
                 }
             }
+            if (!canDealDirect && distanceToTarget <= splashRadius + 1e-6) {
+                this.applyDamage(target, projectile.damage, projectile.towerId);
+            }
             const splashColor = projectile.impactColor ?? "#ff6b5a";
             const splashDuration = projectile.impactDuration ?? 240;
-            this.spawnSplashEffect(impactPosition, projectile.splashRadius, splashColor, splashDuration);
+            this.spawnSplashEffect(impactPosition, splashRadius, splashColor, splashDuration);
         }
         else if (projectile.impactColor) {
             const splashRadius = this.topology.cellRadius * Math.sqrt(3) * 0.6;
             const splashDuration = projectile.impactDuration ?? 220;
             this.spawnSplashEffect(impactPosition, splashRadius, projectile.impactColor, splashDuration);
         }
-        if (projectile.slowFactor && projectile.slowDuration) {
+        const targetImpacted = canDealDirect || (splashRadius != null && distanceToTarget <= splashRadius + 1e-6);
+        if (targetImpacted && projectile.slowFactor && projectile.slowDuration) {
             this.applySlow(target, projectile.slowFactor, projectile.slowDuration);
         }
-        if (projectile.stunDuration) {
+        if (targetImpacted && projectile.stunDuration) {
             this.applyStun(target, projectile.stunDuration);
         }
     }

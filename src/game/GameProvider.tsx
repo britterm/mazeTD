@@ -13,6 +13,8 @@ interface GameContextValue {
   activeTowerId: string | null;
   setActiveTowerId: (towerId: string | null) => void;
   upgradeTower: (towerId: string) => { success: boolean; reason?: string };
+  convertWallTower: (towerId: string, targetType: string) => { success: boolean; reason?: string; cost?: number };
+  getWallConversionCost: (towerId: string, targetType: string) => { success: boolean; reason?: string; cost?: number };
   sellTower: (towerId: string) => { success: boolean; reason?: string; refund?: number };
   getSellValue: (towerId: string) => number;
   statusMessage: string | null;
@@ -67,6 +69,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     return result;
   }, [engine, setStatusMessage]);
 
+  const convertWallTower = useCallback((towerId: string, targetType: string) => {
+    const result = engine.convertWallTower(towerId, targetType);
+    if (!result.success && result.reason) {
+      setStatusMessage(result.reason);
+    } else if (result.success) {
+      if (result.cost != null) {
+        setStatusMessage(`Converted for ${result.cost} cr`);
+      } else {
+        setStatusMessage(null);
+      }
+    }
+    return result;
+  }, [engine, setStatusMessage]);
+
+  const getWallConversionCost = useCallback((towerId: string, targetType: string) => {
+    return engine.getWallConversionCost(towerId, targetType);
+  }, [engine]);
+
   const sellTower = useCallback((towerId: string) => {
     const result = engine.sellTower(towerId);
     if (result.success) {
@@ -91,12 +111,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       activeTowerId,
       setActiveTowerId,
       upgradeTower,
+      convertWallTower,
+      getWallConversionCost,
       sellTower,
       getSellValue,
       statusMessage,
       setStatusMessage
     }),
-    [engine, snapshot, selectedTower, activeTowerId, statusMessage, upgradeTower, sellTower, getSellValue]
+    [
+      engine,
+      snapshot,
+      selectedTower,
+      activeTowerId,
+      statusMessage,
+      upgradeTower,
+      convertWallTower,
+      getWallConversionCost,
+      sellTower,
+      getSellValue
+    ]
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

@@ -47,6 +47,24 @@ export const GameProvider = ({ children }) => {
         }
         return result;
     }, [engine, setStatusMessage]);
+    const convertWallTower = useCallback((towerId, targetType) => {
+        const result = engine.convertWallTower(towerId, targetType);
+        if (!result.success && result.reason) {
+            setStatusMessage(result.reason);
+        }
+        else if (result.success) {
+            if (result.cost != null) {
+                setStatusMessage(`Converted for ${result.cost} cr`);
+            }
+            else {
+                setStatusMessage(null);
+            }
+        }
+        return result;
+    }, [engine, setStatusMessage]);
+    const getWallConversionCost = useCallback((towerId, targetType) => {
+        return engine.getWallConversionCost(towerId, targetType);
+    }, [engine]);
     const sellTower = useCallback((towerId) => {
         const result = engine.sellTower(towerId);
         if (result.success) {
@@ -69,11 +87,24 @@ export const GameProvider = ({ children }) => {
         activeTowerId,
         setActiveTowerId,
         upgradeTower,
+        convertWallTower,
+        getWallConversionCost,
         sellTower,
         getSellValue,
         statusMessage,
         setStatusMessage
-    }), [engine, snapshot, selectedTower, activeTowerId, statusMessage, upgradeTower, sellTower, getSellValue]);
+    }), [
+        engine,
+        snapshot,
+        selectedTower,
+        activeTowerId,
+        statusMessage,
+        upgradeTower,
+        convertWallTower,
+        getWallConversionCost,
+        sellTower,
+        getSellValue
+    ]);
     return _jsx(GameContext.Provider, { value: value, children: children });
 };
 export const useGame = () => {

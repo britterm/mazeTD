@@ -99,6 +99,31 @@
   color: #ff8ba7;
 }
 
+
+.tower-menu__conversion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tower-menu__conversion-label {
+  font-size: 11px;
+  color: #adb8d6;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.tower-menu__conversion-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tower-menu__button--conversion {
+  flex: none;
+}
+
 .tower-menu__actions {
   display: flex;
   gap: 8px;

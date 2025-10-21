@@ -53,7 +53,7 @@ export const ControlPanel = () => {
 
             const existingCount = snapshot.towers.filter((placed) => placed.type === tower.id).length;
 
-            const ramp = tower.id === "wall" ? 0 : existingCount * 10;
+            const ramp = tower.id === "wall" ? 0 : existingCount * 5;
 
             const baseCost = baseLevel?.cost ?? 0;
 
