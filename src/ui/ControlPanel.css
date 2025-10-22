@@ -42,6 +42,55 @@
   cursor: not-allowed;
 }
 
+.speed-controls {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.speed-label {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #9fb7ff;
+}
+
+.speed-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.speed-btn {
+  min-width: 52px;
+  padding: 8px 0;
+  border: 1px solid #284589;
+  background: rgba(40, 69, 137, 0.4);
+  color: #f2f5ff;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.speed-btn.is-active {
+  background: #3c63d8;
+  border-color: #6f8cff;
+}
+
+.speed-btn:hover {
+  background: rgba(76, 112, 214, 0.55);
+}
+
+.speed-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(111, 140, 255, 0.35);
+}
+
 .wave-preview {
   margin-top: 14px;
   background: #121722;
@@ -109,6 +158,8 @@
   font-size: 10px;
   color: #cfd6f5;
   line-height: 1.4;
+  margin-block-end: 0px;
+  margin-block-start: 0px;
 }
 
 .active-list {

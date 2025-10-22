@@ -6,6 +6,7 @@ export interface EnemyDefinition {
   category: EnemyCategory;
   baseHealth: number;
   baseSpeed: number;
+  damage: number;
   reward: number;
   size: number;
   resistances?: Partial<Record<"fire" | "lightning" | "ice" | "earth" | "physical", number>>;
@@ -34,6 +35,7 @@ export interface EnemyInstance<Coord = unknown> {
   health: number;
   maxHealth: number;
   speed: number;
+  damage: number;
   reward: number;
   size: number;
   effects: Array<{

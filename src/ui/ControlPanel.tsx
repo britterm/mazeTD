@@ -3,7 +3,7 @@ import { useGame } from "../game/GameProvider";
 import "./ControlPanel.css";
 
 export const ControlPanel = () => {
-  const { engine, snapshot, selectedTower, setSelectedTower, setStatusMessage, setActiveTowerId } = useGame();
+  const { engine, snapshot, selectedTower, setSelectedTower, setStatusMessage, setActiveTowerId, gameSpeed, setGameSpeed, gameSpeedOptions } = useGame();
 
   const handleStartWave = () => {
     if (snapshot.mode !== "build") {
@@ -21,6 +21,20 @@ export const ControlPanel = () => {
         <button className="start-btn" disabled={snapshot.mode !== "build"} onClick={handleStartWave}>
           {snapshot.mode === "build" ? "Start Wave" : "In Progress"}
         </button>
+        <div className="speed-controls">
+          <span className="speed-label">Game Speed</span>
+          <div className="speed-buttons">
+            {gameSpeedOptions.map(({ label, value }) => (
+              <button
+                key={value}
+                className={`speed-btn ${gameSpeed === value ? "is-active" : ""}`}
+                onClick={() => setGameSpeed(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {snapshot.upcomingWave ? (
           <div className="wave-preview">
             <div className="preview-title">Next Wave</div>

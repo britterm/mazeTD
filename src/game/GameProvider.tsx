@@ -4,6 +4,25 @@ import { GridManager } from "../core/grid/GridManager";
 import { createHexBoardBlueprint } from "./config/board";
 import { GameEngine, GameSnapshot } from "./GameEngine";
 import { useAnimationFrame } from "../hooks/useAnimationFrame";
+import speedConfig from "../data/game-speed.json";
+
+type SpeedOptionConfig = {
+  label?: string;
+  multiplier?: number;
+  enabled?: boolean;
+};
+
+type SpeedOption = {
+  label: string;
+  value: number;
+};
+
+interface SpeedConfigFile {
+  speedOptions?: SpeedOptionConfig[];
+}
+
+const speedConfigData = speedConfig as SpeedConfigFile;
+const configuredSpeedOptions: SpeedOptionConfig[] = Array.isArray(speedConfigData.speedOptions) ? speedConfigData.speedOptions : [];
 
 interface GameContextValue {
   engine: GameEngine<HexCoord>;
@@ -19,6 +38,9 @@ interface GameContextValue {
   getSellValue: (towerId: string) => number;
   statusMessage: string | null;
   setStatusMessage: (message: string | null) => void;
+  gameSpeed: number;
+  setGameSpeed: (speed: number) => void;
+  gameSpeedOptions: SpeedOption[];
 }
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
@@ -35,6 +57,31 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [selectedTower, setSelectedTower] = useState<string | null>("lightning");
   const [activeTowerId, setActiveTowerId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const gameSpeedOptions = useMemo<SpeedOption[]>(() => {
+    const seen = new Set<number>();
+    const normalized = configuredSpeedOptions
+      .filter((option) => option && option.enabled !== false)
+      .map((option) => {
+        const value = typeof option?.multiplier === "number" && option.multiplier > 0 ? option.multiplier : 1;
+        return {
+          label: typeof option?.label === "string" && option.label.trim().length > 0 ? option.label : `${value}x`,
+          value
+        };
+      })
+      .filter((option) => {
+        if (seen.has(option.value)) {
+          return false;
+        }
+        seen.add(option.value);
+        return true;
+      })
+      .sort((a, b) => a.value - b.value);
+    return normalized.length > 0 ? normalized : [{ label: "1x", value: 1 }];
+  }, []);
+
+  const defaultSpeed = gameSpeedOptions[0]?.value ?? 1;
+  const [gameSpeed, setGameSpeed] = useState<number>(defaultSpeed);
 
   useEffect(() => engine.subscribe(setSnapshot), [engine]);
 
@@ -56,7 +103,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }, [engine]);
 
   useAnimationFrame((dt) => {
-    engine.tick(dt);
+    engine.tick(dt * Math.max(1, gameSpeed));
   });
 
   const upgradeTower = useCallback((towerId: string) => {
@@ -102,6 +149,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const getSellValue = useCallback((towerId: string) => engine.getTowerSellValue(towerId), [engine]);
 
+  const applyGameSpeed = useCallback((speed: number) => {
+    if (gameSpeedOptions.some((option) => option.value === speed)) {
+      setGameSpeed(speed);
+    }
+  }, [gameSpeedOptions]);
+
   const value = useMemo(
     () => ({
       engine,
@@ -116,7 +169,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       sellTower,
       getSellValue,
       statusMessage,
-      setStatusMessage
+      setStatusMessage,
+      gameSpeed,
+      setGameSpeed: applyGameSpeed,
+      gameSpeedOptions
     }),
     [
       engine,
@@ -124,6 +180,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       selectedTower,
       activeTowerId,
       statusMessage,
+      gameSpeed,
+      gameSpeedOptions,
+      applyGameSpeed,
       upgradeTower,
       convertWallTower,
       getWallConversionCost,

@@ -290,6 +290,11 @@ export class GameEngine {
             this.notify();
         }
     }
+    computeScore() {
+        const levelsCleared = Math.max(0, this.state.round - 1);
+        const remainingHealth = Math.max(0, this.state.coreHealth);
+        return levelsCleared + remainingHealth;
+    }
     snapshot() {
         return {
             mode: this.state.mode,
@@ -298,6 +303,7 @@ export class GameEngine {
             coreHealth: this.state.coreHealth,
             maxCoreHealth: this.state.maxCoreHealth,
             lives: this.state.lives,
+            score: this.computeScore(),
             path: this.state.path,
             towers: Array.from(this.state.towers.values()).map((tower) => ({
                 id: tower.id,
@@ -388,6 +394,7 @@ export class GameEngine {
             health: def.baseHealth * healthScale,
             maxHealth: def.baseHealth * healthScale,
             speed: def.baseSpeed * speedScale * this.topology.cellRadius * Math.sqrt(3),
+            damage: Math.max(1, (typeof def.damage === "number" ? def.damage : 1)),
             reward: def.reward * this.progression.rewardScaling(round),
             size: def.size,
             effects: [],
@@ -424,12 +431,20 @@ export class GameEngine {
                 enemy.position = { x: corePos.x + offset.x, y: corePos.y + offset.y };
                 if (now >= enemy.nextCoreAttackAt) {
                     this.spawnLightningEffect(enemy.position, corePos, "#ff4f6d", 220);
-                    this.state.coreHealth = Math.max(0, this.state.coreHealth - 1);
+                    const def = enemyDefinitionMap.get(enemy.enemyId);
+                    const fallbackDamage = def && typeof def.damage === "number" ? def.damage : 1;
+                    const baseDamage = Number.isFinite(enemy.damage) ? enemy.damage : fallbackDamage;
+                    const coreDamage = Math.max(1, Math.round(baseDamage));
+                    const newCoreHealth = this.state.coreHealth - coreDamage;
+                    if (newCoreHealth <= 0) {
+                        this.state.coreHealth = 0;
+                        this.state.lives = 0;
+                        this.handleCoreDestroyed();
+                        return;
+                    }
+                    this.state.coreHealth = newCoreHealth;
                     this.state.lives = this.state.coreHealth;
                     enemy.nextCoreAttackAt = now + 1000;
-                    if (this.state.coreHealth <= 0) {
-                        this.state.mode = "defeat";
-                    }
                 }
                 continue;
             }
@@ -477,6 +492,20 @@ export class GameEngine {
                 y: from.y + dy * enemy.progress
             };
         }
+    }
+    handleCoreDestroyed() {
+        if (this.state.mode === "defeat") {
+            return;
+        }
+        this.spawnSplashEffect(this.coreWorld, this.topology.cellRadius * 4.5, "#ff7043", 520);
+        this.spawnSplashEffect(this.coreWorld, this.topology.cellRadius * 2.8, "#ffd166", 360);
+        this.state.coreHealth = 0;
+        this.state.lives = 0;
+        this.state.mode = "defeat";
+        this.state.currentWave = undefined;
+        this.state.enemies.clear();
+        this.state.projectiles.clear();
+        this.notify();
     }
     onEnemyReachedGoal(enemy, now) {
         if (enemy.attackingCore) {

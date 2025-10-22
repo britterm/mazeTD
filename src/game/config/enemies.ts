@@ -7,6 +7,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     category: "grunt",
     baseHealth: 50,
     baseSpeed: 0.9,
+    damage: 1,
     reward: 3,
     size: 1
   },
@@ -16,6 +17,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     category: "runner",
     baseHealth: 30,
     baseSpeed: 1.6,
+    damage: 2,
     reward: 4,
     size: 1
   },
@@ -25,6 +27,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     category: "brute",
     baseHealth: 150,
     baseSpeed: 0.6,
+    damage: 4,
     reward: 12,
     size: 1.2,
     resistances: { physical: 0.15 }
@@ -35,6 +38,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     category: "swarm",
     baseHealth: 23,
     baseSpeed: 1.2,
+    damage: 1,
     reward: 2,
     size: 0.8
   },
@@ -44,6 +48,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     category: "boss",
     baseHealth: 1100,
     baseSpeed: 0.5,
+    damage: 10,
     reward: 65,
     size: 1.6,
     resistances: { fire: 0.2, lightning: 0.1 }

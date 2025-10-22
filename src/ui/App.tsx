@@ -4,6 +4,7 @@ import { HudOverlay } from "./HudOverlay";
 import { ControlPanel } from "./ControlPanel";
 import { TowerMenu } from "./TowerMenu";
 import { EnemyIndicator } from "./EnemyIndicator";
+import { GameOverScreen } from "./GameOverScreen";
 import "./App.css";
 
 export const App = () => {
@@ -16,6 +17,7 @@ export const App = () => {
             <HudOverlay />
             <TowerMenu />
             <EnemyIndicator />
+            <GameOverScreen />
           </div>
         </div>
         <aside className="sidebar">
