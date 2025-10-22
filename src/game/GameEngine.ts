@@ -162,7 +162,7 @@ export class GameEngine<Coord> {
     this.state = {
       mode: "build",
       round: 1,
-      credits: options.startingCredits ?? 200,
+      credits: options.startingCredits ?? 250,
       coreHealth: options.startingCoreHealth ?? 20,
       maxCoreHealth: options.startingCoreHealth ?? 20,
       lives: options.startingCoreHealth ?? 20,

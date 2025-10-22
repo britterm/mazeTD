@@ -15,13 +15,6 @@ export const towerDefinitions = [
                 range: 0,
                 damage: 0,
                 fireRate: 0
-            },
-            {
-                level: 2,
-                cost: 200,
-                range: 0,
-                damage: 0,
-                fireRate: 0
             }
         ]
     },
@@ -45,17 +38,17 @@ export const towerDefinitions = [
             },
             {
                 level: 2,
-                cost: 200,
+                cost: 80,
                 range: 1.50,
-                damage: 28,
+                damage: 25,
                 fireRate: 1.8,
                 instantHit: true
             },
             {
                 level: 3,
-                cost: 350,
+                cost: 160,
                 range: 2,
-                damage: 36,
+                damage: 32,
                 fireRate: 2,
                 instantHit: true,
                 effects: ["chain-prep"]
@@ -74,7 +67,7 @@ export const towerDefinitions = [
         levels: [
             {
                 level: 1,
-                cost: 45,
+                cost: 50,
                 range: 1.25,
                 damage: 14,
                 fireRate: 1.2,
@@ -83,7 +76,7 @@ export const towerDefinitions = [
             },
             {
                 level: 2,
-                cost: 200,
+                cost: 100,
                 range: 1.375,
                 damage: 22,
                 fireRate: 1.3,
@@ -92,7 +85,7 @@ export const towerDefinitions = [
             },
             {
                 level: 3,
-                cost: 350,
+                cost: 200,
                 range: 1.5,
                 damage: 32,
                 fireRate: 1.45,
@@ -113,36 +106,36 @@ export const towerDefinitions = [
         levels: [
             {
                 level: 1,
-                cost: 50,
+                cost: 45,
                 range: 1.25,
                 damage: 8,
                 fireRate: 1,
                 splashRadius: 0.4,
                 projectileSpeed: 8,
                 slowFactor: 0.6,
-                slowDuration: 1.8
+                slowDuration: 2
             },
             {
                 level: 2,
-                cost: 200,
+                cost: 90,
                 range: 1.35,
                 damage: 12,
                 fireRate: 1.1,
                 splashRadius: 0.5,
                 projectileSpeed: 9,
-                slowFactor: 0.5,
+                slowFactor: 0.55,
                 slowDuration: 2.2
             },
             {
                 level: 3,
-                cost: 350,
+                cost: 180,
                 range: 1.45,
                 damage: 16,
                 fireRate: 1.2,
                 splashRadius: .6,
                 projectileSpeed: 10,
-                slowFactor: 0.45,
-                slowDuration: 2.0
+                slowFactor: 0.50,
+                slowDuration: 2.5
             }
         ]
     },
@@ -167,7 +160,7 @@ export const towerDefinitions = [
             },
             {
                 level: 2,
-                cost: 200,
+                cost: 110,
                 range: 1.9,
                 damage: 28,
                 fireRate: 1,
@@ -176,7 +169,7 @@ export const towerDefinitions = [
             },
             {
                 level: 3,
-                cost: 350,
+                cost: 220,
                 range: 2.25,
                 damage: 38,
                 fireRate: 1.1,

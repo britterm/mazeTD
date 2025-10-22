@@ -2,7 +2,7 @@
   "speedOptions": [
     { "label": "1x", "multiplier": 1, "enabled": true },
     { "label": "2x", "multiplier": 2, "enabled": true },
-    { "label": "4x", "multiplier": 4, "enabled": false },
-    { "label": "8x", "multiplier": 8, "enabled": false }
+    { "label": "4x", "multiplier": 4, "enabled": true },
+    { "label": "8x", "multiplier": 8, "enabled": true }
   ]
 }
