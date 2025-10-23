@@ -66,3 +66,38 @@
   max-width: 220px;
   color: #f1e9c5;
 }
+
+.hud-card--credits .hud-value {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+}
+
+.hud-credit-float {
+  position: absolute;
+  left: calc(50% + 30px);
+  transform: translate(-50%, 6px);
+  font-size: 12px;
+  font-weight: 600;
+  color: #64f7a3;
+  text-shadow: 0 0 12px rgba(100, 247, 163, 0.65);
+  pointer-events: none;
+  animation: hud-credit-float-rise 1.5s ease-out forwards;
+}
+
+@keyframes hud-credit-float-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 2px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -28px);
+  }
+}

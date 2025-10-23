@@ -5,6 +5,7 @@ import { ControlPanel } from "./ControlPanel";
 import { TowerMenu } from "./TowerMenu";
 import { EnemyIndicator } from "./EnemyIndicator";
 import { GameOverScreen } from "./GameOverScreen";
+import { EventLog } from "./EventLog";
 import "./App.css";
 
 export const App = () => {
@@ -18,6 +19,7 @@ export const App = () => {
             <TowerMenu />
             <EnemyIndicator />
             <GameOverScreen />
+            <EventLog />
           </div>
         </div>
         <aside className="sidebar">

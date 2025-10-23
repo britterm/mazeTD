@@ -1,6 +1,7 @@
 import { GridManager } from "../core/grid/GridManager";
 import { GridTopology } from "../core/topology/GridTopology";
 import { towerDefinitionMap } from "./config/towers";
+import economyConfig from "../data/economy.json";
 import { enemyDefinitionMap, waveSchedule } from "./config/enemies";
 import { defaultProgression, ProgressionConfig } from "./config/progression";
 import { TowerDefinition, TowerInstance, TowerLevel } from "./entities/tower";
@@ -24,6 +25,15 @@ interface Projectile {
 }
 
 type VisualEffectType = "lightning" | "splash";
+
+const DEFAULT_INTEREST_RATE = 0.05;
+
+type EconomyConfig = {
+  interestRate?: number;
+};
+
+const economySettings = (economyConfig as EconomyConfig) ?? {};
+const BASE_INTEREST_RATE = typeof economySettings.interestRate === "number" && economySettings.interestRate >= 0  ? economySettings.interestRate  : DEFAULT_INTEREST_RATE;
 
 interface VisualEffect {
   id: string;
@@ -67,6 +77,8 @@ export interface GameSnapshot<Coord> {
   maxCoreHealth: number;
   lives: number;
   score: number;
+  interestBonus: { amount: number; createdAt: number; expiresAt: number } | null;
+  log: Array<{ id: number; message: string; createdAt: number }>;
   path: Coord[];
   towers: Array<{
     id: string;
@@ -113,6 +125,9 @@ interface GameState<Coord> {
   nextEnemyId: number;
   nextProjectileId: number;
   nextEffectId: number;
+  lastInterestBonus?: { amount: number; createdAt: number; expiresAt: number };
+  eventLog: Array<{ id: number; message: string; createdAt: number }>;
+  nextLogId: number;
   currentWave?: {
     definition: WaveDefinition;
     tasks: SpawnTask[];
@@ -126,6 +141,7 @@ export class GameEngine<Coord> {
   private readonly progression: ProgressionConfig;
   private readonly waves: WaveDefinition[];
   private readonly coreWorld: WorldPoint;
+  private readonly interestRate = Math.max(0, BASE_INTEREST_RATE);
 
   private readonly duplicateTowerPremium = 5;
   private readonly wallConversionDiscount = 2;
@@ -174,7 +190,10 @@ export class GameEngine<Coord> {
       nextTowerId: 1,
       nextEnemyId: 1,
       nextProjectileId: 1,
-      nextEffectId: 1
+      nextEffectId: 1,
+      lastInterestBonus: undefined,
+      eventLog: [],
+      nextLogId: 1
     };
   }
 
@@ -204,6 +223,10 @@ export class GameEngine<Coord> {
       this.notify();
       return;
     }
+
+    this.logEvent(`Round ${this.state.round} started`);
+
+
 
     const tasks: SpawnTask[] = wave.segments.map((segment) => ({
       enemyId: segment.enemyId,
@@ -458,9 +481,13 @@ export class GameEngine<Coord> {
       remaining -= step;
     }
 
+    const interestCleared = this.cleanupInterestBonus();
+
     if (this.state.mode === "combat") {
       this.cleanupEffects();
       this.checkVictoryConditions();
+      this.notify();
+    } else if (interestCleared) {
       this.notify();
     }
   }
@@ -481,6 +508,8 @@ export class GameEngine<Coord> {
       maxCoreHealth: this.state.maxCoreHealth,
       lives: this.state.lives,
       score: this.computeScore(),
+      interestBonus: this.state.lastInterestBonus ?? null,
+      log: this.state.eventLog.slice(-12),
       path: this.state.path,
       towers: Array.from(this.state.towers.values()).map((tower) => ({
         id: tower.id,
@@ -1271,6 +1300,52 @@ export class GameEngine<Coord> {
     console.debug(`[MazeTD:${type}]`, payload);
   }
 
+
+  private logEvent(message: string): void {
+
+    const entry = { id: this.state.nextLogId++, message, createdAt: this.now() };
+
+    this.state.eventLog.push(entry);
+
+    if (this.state.eventLog.length > 30) {
+
+      this.state.eventLog.splice(0, this.state.eventLog.length - 30);
+
+    }
+
+  }
+
+
+
+  private applyInterestBonus(): void {
+    if (this.interestRate <= 0) {
+      return;
+    }
+
+    const interestGain = Math.floor(this.state.credits * this.interestRate);
+    if (interestGain <= 0) {
+      return;
+    }
+
+    this.state.credits += interestGain;
+    const now = this.now();
+    this.state.lastInterestBonus = { amount: interestGain, createdAt: now, expiresAt: now + 1500 };
+    this.logEvent(`+${interestGain} credits (interest)`);
+  }
+
+  private cleanupInterestBonus(): boolean {
+    const bonus = this.state.lastInterestBonus;
+    if (!bonus) {
+      return false;
+    }
+
+    if (this.now() < bonus.expiresAt) {
+      return false;
+    }
+
+    this.state.lastInterestBonus = undefined;
+    return true;
+  }
   private checkVictoryConditions(): void {
     const currentWave = this.state.currentWave;
     if (!currentWave) {
@@ -1282,8 +1357,14 @@ export class GameEngine<Coord> {
 
     if (waveCleared && !enemiesRemaining) {
       this.state.mode = "build";
+      const completedRound = this.state.round;
+      this.logEvent(`Round ${completedRound} cleared`);
       this.state.round += 1;
       this.state.credits += currentWave.definition.rewardBonus;
+      if (currentWave.definition.rewardBonus > 0) {
+        this.logEvent(`+${currentWave.definition.rewardBonus} credits (wave reward)`);
+      }
+      this.applyInterestBonus();
       this.state.currentWave = undefined;
       this.state.projectiles.clear();
       this.notify();

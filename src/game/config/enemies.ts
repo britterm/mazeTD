@@ -16,7 +16,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     name: "Runner",
     category: "runner",
     baseHealth: 30,
-    baseSpeed: 1.6,
+    baseSpeed: 1.9,
     damage: 2,
     reward: 4,
     size: 1

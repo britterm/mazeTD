@@ -10,9 +10,16 @@ export const HudOverlay = () => {
         <div className="hud-title">Round</div>
         <div className="hud-value">{snapshot.round}</div>
       </div>
-      <div className="hud-card">
+      <div className="hud-card hud-card--credits">
         <div className="hud-title">Credits</div>
-        <div className="hud-value">{Math.floor(snapshot.credits)}</div>
+        <div className="hud-value">
+          {Math.floor(snapshot.credits)}
+          {snapshot.interestBonus ? (
+            <span key={snapshot.interestBonus.createdAt} className="hud-credit-float">
+              (+{snapshot.interestBonus.amount})
+            </span>
+          ) : null}
+        </div>
       </div>
       <div className="hud-card">
         <div className="hud-title">Core</div>
