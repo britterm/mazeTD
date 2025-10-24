@@ -60,7 +60,7 @@
 .speed-buttons {
   display: flex;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
 }
 
@@ -141,10 +141,11 @@
   box-shadow: 0 0 0 2px rgba(90, 214, 255, 0.35);
 }
 
-.tower-name {
-  font-size: 12px;
+.tower-meta .tower-name {
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  color: white;
 }
 
 .tower-meta {

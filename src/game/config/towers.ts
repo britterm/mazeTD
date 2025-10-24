@@ -10,6 +10,7 @@ export const towerDefinitions: TowerDefinition[] = [
     targeting: "first",
     baseCooldown: 0,
     passable: false,
+    color: '#6c757d',
     levels: [
       {
         level: 1,
@@ -29,6 +30,7 @@ export const towerDefinitions: TowerDefinition[] = [
     targeting: "first",
     baseCooldown: 0,
     passable: false,
+    color: '#c76dff',
     levels: [
       {
         level: 1,
@@ -66,6 +68,7 @@ export const towerDefinitions: TowerDefinition[] = [
     targeting: "closest",
     baseCooldown: 0,
     passable: false,
+    color: '#ff7849',
     levels: [
       {
         level: 1,
@@ -105,6 +108,7 @@ export const towerDefinitions: TowerDefinition[] = [
     targeting: "closest",
     baseCooldown: 0,
     passable: false,
+    color: '#7ff0ff',
     levels: [
       {
         level: 1,
@@ -150,6 +154,7 @@ export const towerDefinitions: TowerDefinition[] = [
     targeting: "strongest",
     baseCooldown: 0,
     passable: false,
+    color: '#c8a35a',
     levels: [
       {
         level: 1,
@@ -185,3 +190,23 @@ export const towerDefinitions: TowerDefinition[] = [
 export const towerDefinitionMap = new Map(
   towerDefinitions.map((def) => [def.id, def])
 );
+
+export const getTowerSellValue = (towerId: TowerDefinition["id"], level: number): number => {
+  const definition = towerDefinitionMap.get(towerId);
+  if (!definition) {
+    return 0;
+  }
+
+  if (definition.id === "wall") {
+    return 2;
+  }
+
+  let invested = 0;
+  for (const towerLevel of definition.levels) {
+    if (towerLevel.level <= level) {
+      invested += towerLevel.cost;
+    }
+  }
+
+  return Math.round(invested * 0.6);
+};

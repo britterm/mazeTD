@@ -61,6 +61,11 @@
   background: #6c1f3a;
 }
 
+.hud-mode-victory {
+  background: #1f5c4a;
+  color: #eafff2;
+}
+
 .hud-message {
   font-size: 10px;
   max-width: 220px;

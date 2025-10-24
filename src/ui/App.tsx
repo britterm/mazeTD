@@ -5,6 +5,7 @@ import { ControlPanel } from "./ControlPanel";
 import { TowerMenu } from "./TowerMenu";
 import { EnemyIndicator } from "./EnemyIndicator";
 import { GameOverScreen } from "./GameOverScreen";
+import { VictoryScreen } from "./VictoryScreen";
 import { EventLog } from "./EventLog";
 import "./App.css";
 
@@ -18,6 +19,7 @@ export const App = () => {
             <HudOverlay />
             <TowerMenu />
             <EnemyIndicator />
+            <VictoryScreen />
             <GameOverScreen />
             <EventLog />
           </div>

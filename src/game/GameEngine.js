@@ -1,4 +1,4 @@
-import { towerDefinitionMap } from "./config/towers";
+import { getTowerSellValue, towerDefinitionMap } from "./config/towers";
 import economyConfig from "../data/economy.json";
 import { enemyDefinitionMap, waveSchedule } from "./config/enemies";
 import { defaultProgression } from "./config/progression";
@@ -72,12 +72,13 @@ export class GameEngine {
         this.debug.hits = 0;
     }
     beginRound() {
-        if (this.state.mode === "combat" || this.state.mode === "defeat") {
+        if (this.state.mode === "combat" || this.state.mode === "defeat" || this.state.mode === "victory") {
             return;
         }
         const wave = this.waves.find((w) => w.round === this.state.round);
         if (!wave) {
-            this.state.mode = "defeat";
+            this.state.mode = "victory";
+            this.logEvent("All waves cleared! The maze is secure.");
             this.notify();
             return;
         }
@@ -251,16 +252,7 @@ export class GameEngine {
         return this.calculateSellValue(def, tower.level);
     }
     calculateSellValue(def, level) {
-        if (def.id === "wall") {
-            return 2;
-        }
-        let total = 0;
-        for (const lvl of def.levels) {
-            if (lvl.level <= level) {
-                total += lvl.cost;
-            }
-        }
-        return Math.round(total * 0.6);
+        return getTowerSellValue(def.id, level);
     }
     calculateWallConversionCost(tower, targetDef) {
         const baseLevel = targetDef.levels[0];
@@ -278,7 +270,7 @@ export class GameEngine {
         if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
             return;
         }
-        if (this.state.mode === "defeat") {
+        if (this.state.mode === "defeat" || this.state.mode === "victory") {
             return;
         }
         const maxStep = 100;
@@ -304,9 +296,14 @@ export class GameEngine {
         }
     }
     computeScore() {
-        const levelsCleared = Math.max(0, this.state.round - 1);
-        const remainingHealth = Math.max(0, this.state.coreHealth);
-        return levelsCleared + remainingHealth;
+        const towerSaleTotal = Array.from(this.state.towers.values()).reduce((sum, tower) => {
+            const def = this.getTowerDefinition(tower.towerType);
+            if (!def) {
+                return sum;
+            }
+            return sum + this.calculateSellValue(def, tower.level);
+        }, 0);
+        return Math.floor(this.state.credits) + towerSaleTotal;
     }
     snapshot() {
         return {
@@ -1025,10 +1022,13 @@ export class GameEngine {
         const waveCleared = currentWave.tasks.every((task) => task.remaining <= 0);
         const enemiesRemaining = this.state.enemies.size > 0;
         if (waveCleared && !enemiesRemaining) {
-            this.state.mode = "build";
             const completedRound = this.state.round;
+            const isLastScheduledRound = completedRound >= this.waves.length;
+            this.state.mode = isLastScheduledRound ? "victory" : "build";
             this.logEvent(`Round ${completedRound} cleared`);
-            this.state.round += 1;
+            if (!isLastScheduledRound) {
+                this.state.round += 1;
+            }
             this.state.credits += currentWave.definition.rewardBonus;
             if (currentWave.definition.rewardBonus > 0) {
                 this.logEvent(`+${currentWave.definition.rewardBonus} credits (wave reward)`);
@@ -1036,6 +1036,9 @@ export class GameEngine {
             this.applyInterestBonus();
             this.state.currentWave = undefined;
             this.state.projectiles.clear();
+            if (isLastScheduledRound) {
+                this.logEvent("All waves cleared! The maze is secure.");
+            }
             this.notify();
         }
     }

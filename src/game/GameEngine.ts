@@ -1,12 +1,12 @@
 import { GridManager } from "../core/grid/GridManager";
 import { GridTopology } from "../core/topology/GridTopology";
-import { towerDefinitionMap } from "./config/towers";
+import { getTowerSellValue, towerDefinitionMap } from "./config/towers";
 import economyConfig from "../data/economy.json";
 import { enemyDefinitionMap, waveSchedule } from "./config/enemies";
 import { defaultProgression, ProgressionConfig } from "./config/progression";
 import { TowerDefinition, TowerInstance, TowerLevel } from "./entities/tower";
 import { EnemyInstance, WaveDefinition } from "./entities/enemy";
-import { WorldPoint } from "../core/types";
+import { TowerType, WorldPoint } from "../core/types";
 
 interface Projectile {
   id: string;
@@ -70,7 +70,7 @@ interface TowerRuntime<Coord> extends TowerInstance<Coord> {
 }
 
 export interface GameSnapshot<Coord> {
-  mode: "build" | "combat" | "defeat";
+  mode: "build" | "combat" | "defeat" | "victory";
   round: number;
   credits: number;
   coreHealth: number;
@@ -82,7 +82,7 @@ export interface GameSnapshot<Coord> {
   path: Coord[];
   towers: Array<{
     id: string;
-    type: string;
+    type: TowerType;
     level: number;
     coord: Coord;
   }>;
@@ -110,7 +110,7 @@ interface GameOptions<Coord> {
 }
 
 interface GameState<Coord> {
-  mode: "build" | "combat" | "defeat";
+  mode: "build" | "combat" | "defeat" | "victory";
   round: number;
   credits: number;
   coreHealth: number;
@@ -213,13 +213,14 @@ export class GameEngine<Coord> {
   }
 
   beginRound(): void {
-    if (this.state.mode === "combat" || this.state.mode === "defeat") {
+    if (this.state.mode === "combat" || this.state.mode === "defeat" || this.state.mode === "victory") {
       return;
     }
 
     const wave = this.waves.find((w) => w.round === this.state.round);
     if (!wave) {
-      this.state.mode = "defeat";
+      this.state.mode = "victory";
+      this.logEvent("All waves cleared! The maze is secure.");
       this.notify();
       return;
     }
@@ -430,17 +431,7 @@ export class GameEngine<Coord> {
   }
 
   private calculateSellValue(def: TowerDefinition, level: number): number {
-    if (def.id === "wall") {
-      return 2;
-    }
-
-    let total = 0;
-    for (const lvl of def.levels) {
-      if (lvl.level <= level) {
-        total += lvl.cost;
-      }
-    }
-    return Math.round(total * 0.6);
+    return getTowerSellValue(def.id, level);
   }
 
   private calculateWallConversionCost(tower: TowerRuntime<Coord>, targetDef: TowerDefinition): number | null {
@@ -461,7 +452,7 @@ export class GameEngine<Coord> {
       return;
     }
 
-    if (this.state.mode === "defeat") {
+    if (this.state.mode === "defeat" || this.state.mode === "victory") {
       return;
     }
 
@@ -494,9 +485,14 @@ export class GameEngine<Coord> {
 
 
   private computeScore(): number {
-    const levelsCleared = Math.max(0, this.state.round - 1);
-    const remainingHealth = Math.max(0, this.state.coreHealth);
-    return levelsCleared + remainingHealth;
+    const towerSaleTotal = Array.from(this.state.towers.values()).reduce((sum, tower) => {
+      const def = this.getTowerDefinition(tower.towerType);
+      if (!def) {
+        return sum;
+      }
+      return sum + this.calculateSellValue(def, tower.level);
+    }, 0);
+    return Math.floor(this.state.credits) + towerSaleTotal;
   }
 
   snapshot(): GameSnapshot<Coord> {
@@ -1356,10 +1352,13 @@ export class GameEngine<Coord> {
     const enemiesRemaining = this.state.enemies.size > 0;
 
     if (waveCleared && !enemiesRemaining) {
-      this.state.mode = "build";
       const completedRound = this.state.round;
+      const isLastScheduledRound = completedRound >= this.waves.length;
+      this.state.mode = isLastScheduledRound ? "victory" : "build";
       this.logEvent(`Round ${completedRound} cleared`);
-      this.state.round += 1;
+      if (!isLastScheduledRound) {
+        this.state.round += 1;
+      }
       this.state.credits += currentWave.definition.rewardBonus;
       if (currentWave.definition.rewardBonus > 0) {
         this.logEvent(`+${currentWave.definition.rewardBonus} credits (wave reward)`);
@@ -1367,6 +1366,9 @@ export class GameEngine<Coord> {
       this.applyInterestBonus();
       this.state.currentWave = undefined;
       this.state.projectiles.clear();
+      if (isLastScheduledRound) {
+        this.logEvent("All waves cleared! The maze is secure.");
+      }
       this.notify();
     }
   }

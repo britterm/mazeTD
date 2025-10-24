@@ -26,6 +26,7 @@ export interface TowerDefinition {
   id: TowerType;
   name: string;
   description: string;
+  color: string;
   category: "blocker" | "damage" | "control";
   attackMode: AttackMode;
   targeting: TargetingBehavior;

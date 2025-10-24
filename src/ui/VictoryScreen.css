@@ -1,0 +1,113 @@
+.victory-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 12, 18, 0.78);
+  backdrop-filter: blur(6px);
+  z-index: 50;
+  pointer-events: none;
+  animation: victory-fade 0.35s ease;
+}
+
+.victory-card {
+  pointer-events: auto;
+  background: linear-gradient(165deg, rgba(22, 36, 32, 0.95), rgba(10, 20, 18, 0.92));
+  border: 1px solid rgba(102, 255, 196, 0.45);
+  border-radius: 18px;
+  padding: 32px 40px;
+  min-width: 320px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 24px 46px rgba(0, 0, 0, 0.45);
+}
+
+.victory-title {
+  margin: 0 0 12px;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #68ffba;
+  text-shadow: 0 0 18px rgba(104, 255, 186, 0.45);
+}
+
+.victory-subtitle {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  color: rgba(224, 255, 245, 0.8);
+}
+
+.victory-score {
+  margin: 16px 0 24px;
+  font-size: 54px;
+  font-weight: 700;
+  color: #f8ffe4;
+  text-shadow: 0 0 16px rgba(155, 255, 193, 0.55);
+}
+
+.victory-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.victory-stat {
+  background: rgba(10, 22, 18, 0.65);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(104, 255, 186, 0.25);
+}
+
+.victory-stat .label {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(224, 255, 245, 0.6);
+}
+
+.victory-stat .value {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #e8ffe0;
+}
+
+.victory-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 26px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #5be7a0, #3bca8a);
+  color: #04261c;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 12px 22px rgba(42, 200, 136, 0.35);
+}
+
+.victory-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 28px rgba(42, 200, 136, 0.4);
+}
+
+.victory-button:active {
+  transform: translateY(1px);
+}
+
+@keyframes victory-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

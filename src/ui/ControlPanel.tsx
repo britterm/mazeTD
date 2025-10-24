@@ -35,7 +35,7 @@ export const ControlPanel = () => {
             ))}
           </div>
         </div>
-        {snapshot.upcomingWave ? (
+        {/* {snapshot.upcomingWave ? (
           <div className="wave-preview">
             <div className="preview-title">Next Wave</div>
             <ul>
@@ -53,7 +53,7 @@ export const ControlPanel = () => {
               ) : null}
             </ul>
           </div>
-        ) : null}
+        ) : null} */}
       </section>
 
       <section className="panel-section">
@@ -90,14 +90,13 @@ export const ControlPanel = () => {
                 }}
 
               >
-
-                <div className="tower-name">{tower.name}</div>
-
                 <div className="tower-meta">
+
+                  <div className="tower-name" style={{ color: tower.color }}>{tower.name}</div>
 
                   <span className="tower-cost">{costLabel} cr</span>
 
-                  <span className="tower-type">{tower.category}</span>
+                  {/* <span className="tower-type">{tower.category}</span> */}
 
                 </div>
 

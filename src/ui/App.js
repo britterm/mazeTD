@@ -6,8 +6,9 @@ import { ControlPanel } from "./ControlPanel";
 import { TowerMenu } from "./TowerMenu";
 import { EnemyIndicator } from "./EnemyIndicator";
 import { GameOverScreen } from "./GameOverScreen";
+import { VictoryScreen } from "./VictoryScreen";
 import { EventLog } from "./EventLog";
 import "./App.css";
 export const App = () => {
-    return (_jsx(GameProvider, { children: _jsxs("div", { className: "app-shell", children: [_jsx("div", { className: "playfield", children: _jsxs("div", { className: "canvas-stack", children: [_jsx(GameCanvas, {}), _jsx(HudOverlay, {}), _jsx(TowerMenu, {}), _jsx(EnemyIndicator, {}), _jsx(GameOverScreen, {}), _jsx(EventLog, {})] }) }), _jsx("aside", { className: "sidebar", children: _jsx(ControlPanel, {}) })] }) }));
+    return (_jsx(GameProvider, { children: _jsxs("div", { className: "app-shell", children: [_jsx("div", { className: "playfield", children: _jsxs("div", { className: "canvas-stack", children: [_jsx(GameCanvas, {}), _jsx(HudOverlay, {}), _jsx(TowerMenu, {}), _jsx(EnemyIndicator, {}), _jsx(VictoryScreen, {}), _jsx(GameOverScreen, {}), _jsx(EventLog, {})] }) }), _jsx("aside", { className: "sidebar", children: _jsx(ControlPanel, {}) })] }) }));
 };
