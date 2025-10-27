@@ -3,13 +3,13 @@ import { EnemyDefinition, WaveDefinition } from "../entities/enemy";
 export const enemyDefinitions: EnemyDefinition[] = [
   {
     id: "crawler",
-    name: "Crawler",
+    name: "Blob",
     category: "grunt",
     baseHealth: 50,
     baseSpeed: 0.9,
     damage: 1,
     reward: 3,
-    size: 1
+    size: 1.5
   },
   {
     id: "runner",
@@ -40,7 +40,7 @@ export const enemyDefinitions: EnemyDefinition[] = [
     baseSpeed: 1.2,
     damage: 1,
     reward: 2,
-    size: 0.8
+    size: 2.75
   },
   {
     id: "colossus",

@@ -1,0 +1,245 @@
+{
+  "frames": {
+    "crawler_move_n_0": {
+      "x": 0,
+      "y": 0,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_n_1": {
+      "x": 96,
+      "y": 0,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_n_2": {
+      "x": 192,
+      "y": 0,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_n_3": {
+      "x": 288,
+      "y": 0,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_n_4": {
+      "x": 384,
+      "y": 0,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_n_5": {
+      "x": 480,
+      "y": 0,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_ne_0": {
+      "x": 0,
+      "y": 96,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_ne_1": {
+      "x": 96,
+      "y": 96,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_ne_2": {
+      "x": 192,
+      "y": 96,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_ne_3": {
+      "x": 288,
+      "y": 96,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_ne_4": {
+      "x": 384,
+      "y": 96,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_ne_5": {
+      "x": 480,
+      "y": 96,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_se_0": {
+      "x": 0,
+      "y": 192,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_se_1": {
+      "x": 96,
+      "y": 192,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_se_2": {
+      "x": 192,
+      "y": 192,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_se_3": {
+      "x": 288,
+      "y": 192,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_se_4": {
+      "x": 384,
+      "y": 192,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_se_5": {
+      "x": 480,
+      "y": 192,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_s_0": {
+      "x": 0,
+      "y": 288,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_s_1": {
+      "x": 96,
+      "y": 288,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_s_2": {
+      "x": 192,
+      "y": 288,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_s_3": {
+      "x": 288,
+      "y": 288,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_s_4": {
+      "x": 384,
+      "y": 288,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_s_5": {
+      "x": 480,
+      "y": 288,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_sw_0": {
+      "x": 0,
+      "y": 384,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_sw_1": {
+      "x": 96,
+      "y": 384,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_sw_2": {
+      "x": 192,
+      "y": 384,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_sw_3": {
+      "x": 288,
+      "y": 384,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_sw_4": {
+      "x": 384,
+      "y": 384,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_sw_5": {
+      "x": 480,
+      "y": 384,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_nw_0": {
+      "x": 0,
+      "y": 480,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_nw_1": {
+      "x": 96,
+      "y": 480,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_nw_2": {
+      "x": 192,
+      "y": 480,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_nw_3": {
+      "x": 288,
+      "y": 480,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_nw_4": {
+      "x": 384,
+      "y": 480,
+      "w": 96,
+      "h": 96
+    },
+    "crawler_move_nw_5": {
+      "x": 480,
+      "y": 480,
+      "w": 96,
+      "h": 96
+    }
+  },
+  "meta": {
+    "name": "crawler_spritesheet_96x96_6x6.png",
+    "frame_size": {
+      "w": 96,
+      "h": 96
+    },
+    "inner_draw_area": {
+      "w": 88,
+      "h": 88,
+      "border": 4
+    },
+    "rows": 6,
+    "cols": 6,
+    "directions_row_order": [
+      "N",
+      "NE",
+      "SE",
+      "S",
+      "SW",
+      "NW"
+    ],
+    "frame_order": "left-to-right 0..5 per row",
+    "pivot": "bottom-center (48,88) recommended in-engine",
+    "fps_suggestion": 10
+  }
+}

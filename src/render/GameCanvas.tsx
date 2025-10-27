@@ -4,6 +4,10 @@ import { useGame } from "../game/GameProvider";
 import { GameSnapshot } from "../game/GameEngine";
 import { towerDefinitionMap } from "../game/config/towers";
 import { enemyDefinitionMap } from "../game/config/enemies";
+import { createCrawlerSpriteSheet, type CrawlerSpriteSheet, type HexDirectionKey } from "./sprites/crawler";
+import { createSkitterSpriteSheet } from "./sprites/skitter";
+
+type DirectionalSpriteSheet = CrawlerSpriteSheet;
 
 interface CanvasTransform {
   scale: number;
@@ -30,6 +34,24 @@ const ENEMY_STYLES = {
   boss: { fill: '#ffa938', stroke: '#7a4508', shape: 'hex', size: 1.6 }
 } as const;
 
+type EnemyAnimationState = {
+  lastX: number;
+  lastY: number;
+  direction: HexDirectionKey;
+  frameIndex: number;
+  accumulated: number;
+};
+
+const HEX_DIRECTION_ORDER: HexDirectionKey[] = ["n", "ne", "se", "s", "sw", "nw"];
+const HEX_DIRECTION_VECTORS: Record<HexDirectionKey, { x: number; y: number }> = {
+  n: { x: 0, y: -1 },
+  ne: { x: 0.8660254037844387, y: -0.5 },
+  se: { x: 0.8660254037844387, y: 0.5 },
+  s: { x: 0, y: 1 },
+  sw: { x: -0.8660254037844387, y: 0.5 },
+  nw: { x: -0.8660254037844387, y: -0.5 }
+};
+
 export const GameCanvas = () => {
   const { engine, snapshot, selectedTower, setSelectedTower, setStatusMessage, activeTowerId, setActiveTowerId } = useGame();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -37,10 +59,29 @@ export const GameCanvas = () => {
   const transformRef = useRef<CanvasTransform | null>(null);
   const rangeAlphaRef = useRef(1);
   const activeTowerIdRef = useRef<string | null>(null);
+  const enemyAnimationRef = useRef<Map<string, EnemyAnimationState>>(new Map());
+  const lastFrameTimeRef = useRef<number>(typeof performance !== "undefined" ? performance.now() : Date.now());
+  const crawlerSpriteRef = useRef<DirectionalSpriteSheet | null>(null);
+  const skitterSpriteRef = useRef<DirectionalSpriteSheet | null>(null);
 
   const boardCells = useMemo(() => engine.getBoardCells(), [engine]);
   const boardPoints = useMemo(() => boardCells.map((cell) => engine.toWorld(cell)), [boardCells, engine]);
   const bounds = useMemo(() => computeWorldBounds(boardPoints), [boardPoints]);
+
+  useEffect(() => {
+    if (!crawlerSpriteRef.current) {
+      const sheet = createCrawlerSpriteSheet();
+      if (sheet) {
+        crawlerSpriteRef.current = sheet;
+      }
+    }
+    if (!skitterSpriteRef.current) {
+      const sheet = createSkitterSpriteSheet();
+      if (sheet) {
+        skitterSpriteRef.current = sheet;
+      }
+    }
+  }, []);
 
   useEffect(() => {
     snapshotRef.current = snapshot as GameSnapshot<unknown>;
@@ -86,6 +127,9 @@ export const GameCanvas = () => {
 
     const snap = snapshotRef.current;
     const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const lastFrame = lastFrameTimeRef.current;
+    const delta = Math.min(100, Math.max(0, now - lastFrame));
+    lastFrameTimeRef.current = now;
     const ratio = window.devicePixelRatio || 1;
     const width = canvas.clientWidth * ratio;
     const height = canvas.clientHeight * ratio;
@@ -119,7 +163,17 @@ export const GameCanvas = () => {
     drawCore(ctx, snap.core, engine.getCellRadius(), scale, offsetX, offsetY);
     drawTowers(ctx, snap, engine, scale, offsetX, offsetY, activeId ?? null, rangeAlpha);
     drawEffects(ctx, snap.effects, scale, offsetX, offsetY, now);
-    drawEnemies(ctx, snap, scale, offsetX, offsetY);
+    drawEnemies(
+      ctx,
+      snap,
+      scale,
+      offsetX,
+      offsetY,
+      delta,
+      enemyAnimationRef.current,
+      crawlerSpriteRef.current,
+      skitterSpriteRef.current
+    );
     drawProjectiles(ctx, snap, scale, offsetX, offsetY);
   }, [boardCells, bounds, engine]);
 
@@ -462,9 +516,14 @@ const drawEnemies = (
   snapshot: GameSnapshot<any>,
   scale: number,
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  deltaMs: number,
+  animationStates: Map<string, EnemyAnimationState>,
+  crawlerSprite: DirectionalSpriteSheet | null,
+  skitterSprite: DirectionalSpriteSheet | null
 ) => {
   const baseSize = 12 * scale;
+  const activeSpriteIds: string[] = [];
 
   for (const enemy of snapshot.enemies) {
     const screenX = enemy.position.x * scale + offsetX;
@@ -473,85 +532,256 @@ const drawEnemies = (
     const category = (def?.category ?? 'grunt') as keyof typeof ENEMY_STYLES;
     const style = ENEMY_STYLES[category] ?? ENEMY_STYLES.grunt;
     const sizeFactor = style.size * (def?.size ?? 1);
-    const size = baseSize * sizeFactor;
+    let size = baseSize * sizeFactor;
+    if (enemy.enemyId === "crawler") {
+      size *= 2;
+    }
     const half = size / 2;
 
-    ctx.save();
-    ctx.fillStyle = style.fill;
-    ctx.strokeStyle = style.stroke;
-    ctx.lineWidth = 2;
+    let drewSprite = false;
 
-    switch (style.shape) {
-      case 'triangle': {
-        ctx.beginPath();
-        ctx.moveTo(screenX, screenY - half);
-        ctx.lineTo(screenX + half, screenY + half);
-        ctx.lineTo(screenX - half, screenY + half);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        break;
-      }
-      case 'diamond': {
-        ctx.beginPath();
-        ctx.moveTo(screenX, screenY - half);
-        ctx.lineTo(screenX + half, screenY);
-        ctx.lineTo(screenX, screenY + half);
-        ctx.lineTo(screenX - half, screenY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        break;
-      }
-      case 'square': {
-        ctx.beginPath();
-        ctx.rect(screenX - half, screenY - half, size, size);
-        ctx.fill();
-        ctx.stroke();
-        break;
-      }
-      case 'hex': {
-        ctx.beginPath();
-        for (let i = 0; i < 6; i += 1) {
-          const angle = (Math.PI / 3) * i - Math.PI / 2;
-          const x = screenX + half * Math.cos(angle);
-          const y = screenY + half * Math.sin(angle);
-          if (i === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
-          }
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        break;
-      }
-      case 'circle':
-      default: {
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, half, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        break;
-      }
+    let sprite: DirectionalSpriteSheet | null = null;
+    if (enemy.enemyId === "crawler") {
+      sprite = crawlerSprite;
+    } else if (enemy.enemyId === "swarm") {
+      sprite = skitterSprite;
     }
 
-    ctx.restore();
+    if (sprite && sprite.image && sprite.isLoaded()) {
+      activeSpriteIds.push(enemy.id);
+      drewSprite = drawDirectionalSprite(
+        ctx,
+        enemy,
+        screenX,
+        screenY,
+        size,
+        deltaMs,
+        animationStates,
+        sprite
+      );
+    }
 
-    const barWidth = size;
-    const barHeight = Math.max(4, size * 0.18);
-    const healthRatio = Math.max(0, enemy.health / enemy.maxHealth);
-    ctx.fillStyle = '#1a1d29';
-    ctx.fillRect(screenX - barWidth / 2, screenY - half - barHeight - 4, barWidth, barHeight);
-    ctx.fillStyle = '#4cff82';
-    ctx.fillRect(
-      screenX - barWidth / 2,
-      screenY - half - barHeight - 4,
-      barWidth * healthRatio,
-      barHeight
-    );
+    if (!drewSprite) {
+      ctx.save();
+      ctx.fillStyle = style.fill;
+      ctx.strokeStyle = style.stroke;
+      ctx.lineWidth = 2;
+      drawEnemyPrimitive(ctx, screenX, screenY, size, half, style.shape);
+      ctx.restore();
+    }
+
+    const maxHealth = enemy.maxHealth > 0 ? enemy.maxHealth : 1;
+    const healthRatio = Math.max(0, Math.min(1, enemy.health / maxHealth));
+    if (healthRatio < 0.999) {
+      const barWidth = size;
+      const barHeight = Math.max(4, size * 0.18);
+      ctx.fillStyle = '#1a1d29';
+      ctx.fillRect(screenX - barWidth / 2, screenY - half - barHeight - 4, barWidth, barHeight);
+      ctx.fillStyle = '#4cff82';
+      ctx.fillRect(
+        screenX - barWidth / 2,
+        screenY - half - barHeight - 4,
+        barWidth * healthRatio,
+        barHeight
+      );
+    }
   }
+
+  if (animationStates.size > 0) {
+    const activeSet = new Set(activeSpriteIds);
+    for (const key of Array.from(animationStates.keys())) {
+      if (!activeSet.has(key)) {
+        animationStates.delete(key);
+      }
+    }
+  }
+};
+
+const drawEnemyPrimitive = (
+  ctx: CanvasRenderingContext2D,
+  screenX: number,
+  screenY: number,
+  size: number,
+  half: number,
+  shape: typeof ENEMY_STYLES[keyof typeof ENEMY_STYLES]["shape"]
+) => {
+  switch (shape) {
+    case 'triangle': {
+      ctx.beginPath();
+      ctx.moveTo(screenX, screenY - half);
+      ctx.lineTo(screenX + half, screenY + half);
+      ctx.lineTo(screenX - half, screenY + half);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'diamond': {
+      ctx.beginPath();
+      ctx.moveTo(screenX, screenY - half);
+      ctx.lineTo(screenX + half, screenY);
+      ctx.lineTo(screenX, screenY + half);
+      ctx.lineTo(screenX - half, screenY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'square': {
+      ctx.beginPath();
+      ctx.rect(screenX - half, screenY - half, size, size);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'hex': {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i += 1) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        const x = screenX + half * Math.cos(angle);
+        const y = screenY + half * Math.sin(angle);
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+    case 'circle':
+    default: {
+      ctx.beginPath();
+      ctx.arc(screenX, screenY, half, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+  }
+};
+
+const drawDirectionalSprite = (
+  ctx: CanvasRenderingContext2D,
+  enemy: GameSnapshot<any>["enemies"][number],
+  screenX: number,
+  screenY: number,
+  size: number,
+  deltaMs: number,
+  animationStates: Map<string, EnemyAnimationState>,
+  sprite: DirectionalSpriteSheet
+): boolean => {
+  if (!sprite.image) {
+    return false;
+  }
+
+  const threshold = 0.0001;
+  const existing = animationStates.get(enemy.id);
+  const defaultDirection: HexDirectionKey = existing?.direction ?? 'n';
+  const state: EnemyAnimationState = existing
+    ? { ...existing }
+    : {
+        lastX: enemy.position.x,
+        lastY: enemy.position.y,
+        direction: defaultDirection,
+        frameIndex: 0,
+        accumulated: 0
+      };
+
+  const dx = enemy.position.x - state.lastX;
+  const dy = enemy.position.y - state.lastY;
+  const distanceSq = dx * dx + dy * dy;
+
+  if (distanceSq > threshold) {
+    state.direction = resolveHexDirection(dx, dy, state.direction);
+    state.accumulated += deltaMs;
+    const frames = sprite.frames[state.direction] ?? [];
+    const frameCount = frames.length;
+    if (frameCount > 0) {
+      while (state.accumulated >= sprite.frameDuration) {
+        state.accumulated -= sprite.frameDuration;
+        state.frameIndex = (state.frameIndex + 1) % frameCount;
+      }
+    }
+  } else {
+    state.accumulated = 0;
+    state.frameIndex = 0;
+  }
+
+  state.lastX = enemy.position.x;
+  state.lastY = enemy.position.y;
+  animationStates.set(enemy.id, state);
+
+  const frames = sprite.frames[state.direction] ?? [];
+  if (frames.length === 0) {
+    return false;
+  }
+  const frame = frames[state.frameIndex] ?? frames[0];
+  if (!frame) {
+    return false;
+  }
+
+  const spriteScale = size / frame.w;
+  const drawWidth = frame.w * spriteScale;
+  const drawHeight = frame.h * spriteScale;
+  const pivotX = sprite.pivot.x * spriteScale;
+  const pivotY = sprite.pivot.y * spriteScale;
+
+  const previousSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    sprite.image,
+    frame.x,
+    frame.y,
+    frame.w,
+    frame.h,
+    screenX - pivotX,
+    screenY - pivotY,
+    drawWidth,
+    drawHeight
+  );
+  ctx.imageSmoothingEnabled = previousSmoothing;
+
+  return true;
+};
+
+const resolveHexDirection = (dx: number, dy: number, fallback: HexDirectionKey): HexDirectionKey => {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+    return fallback;
+  }
+
+  const magnitude = Math.hypot(dx, dy);
+  if (magnitude < 1e-5) {
+    return fallback;
+  }
+
+  const vx = dx / magnitude;
+  const vy = dy / magnitude;
+
+  let bestDirection: HexDirectionKey = fallback;
+  let bestScore = -Infinity;
+
+  for (const direction of HEX_DIRECTION_ORDER) {
+    const vector = HEX_DIRECTION_VECTORS[direction];
+    const score = vx * vector.x + vy * vector.y;
+    if (score > bestScore) {
+      bestScore = score;
+      bestDirection = direction;
+    }
+  }
+
+  if (bestDirection !== fallback) {
+    const currentVector = HEX_DIRECTION_VECTORS[fallback];
+    if (currentVector) {
+      const currentScore = vx * currentVector.x + vy * currentVector.y;
+      if (currentScore + 0.1 >= bestScore) {
+        return fallback;
+      }
+    }
+  }
+
+  return bestDirection;
 };
 
 const drawProjectiles = (
