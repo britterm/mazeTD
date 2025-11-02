@@ -4,7 +4,7 @@ import { getTowerSellValue } from "../game/config/towers";
 import "./VictoryScreen.css";
 
 export const VictoryScreen = () => {
-  const { snapshot } = useGame();
+  const { snapshot, highScore } = useGame();
 
   if (snapshot.mode !== "victory") {
     return null;
@@ -14,14 +14,16 @@ export const VictoryScreen = () => {
     const roundsSurvived = snapshot.round;
     const towerSalvage = snapshot.towers.reduce((total, tower) => total + getTowerSellValue(tower.type, tower.level), 0);
     const carriedCredits = Math.floor(snapshot.credits);
-    const finalScore = towerSalvage + carriedCredits;
+    const finalScore = Math.max(0, Math.floor(snapshot.score));
+    const bestScore = Math.max(highScore, finalScore);
     return {
       roundsSurvived,
       towerSalvage,
       carriedCredits,
-      finalScore
+      finalScore,
+      bestScore
     };
-  }, [snapshot]);
+  }, [snapshot, highScore]);
 
   return (
     <div className="victory-screen">
@@ -30,6 +32,10 @@ export const VictoryScreen = () => {
         <p className="victory-subtitle">Final Score</p>
         <div className="victory-score">{stats.finalScore.toLocaleString()}</div>
         <div className="victory-breakdown">
+          <div className="victory-stat">
+            <span className="label">High score</span>
+            <span className="value">{stats.bestScore.toLocaleString()}</span>
+          </div>
           <div className="victory-stat">
             <span className="label">Tower salvage</span>
             <span className="value">{stats.towerSalvage.toLocaleString()}</span>

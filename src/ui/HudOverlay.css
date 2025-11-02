@@ -106,3 +106,9 @@
     transform: translate(-50%, -28px);
   }
 }
+
+.hud-subvalue {
+  font-size: 11px;
+  margin-top: 4px;
+  color: #9aa6c0;
+}

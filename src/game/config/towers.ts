@@ -43,7 +43,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 2,
         cost: 80,
-        range: 1.75,
+        range: 1.85,
         damage: 25,
         fireRate: 1.8,
         instantHit: true
@@ -51,7 +51,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 3,
         cost: 160,
-        range: 2,
+        range: 2.2,
         damage: 32,
         fireRate: 2,
         instantHit: true,
@@ -73,7 +73,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 1,
         cost: 50,
-        range: 1.25,
+        range: 1.45,
         damage: 14,
         fireRate: 1.2,
         splashRadius: 1.1,
@@ -82,7 +82,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 2,
         cost: 100,
-        range: 1.375,
+        range: 1.65,
         damage: 22,
         fireRate: 1.3,
         splashRadius: 1.35,
@@ -91,7 +91,7 @@ export const towerDefinitions: TowerDefinition[] = [
       {
         level: 3,
         cost: 200,
-        range: 1.5,
+        range: 2,
         damage: 32,
         fireRate: 1.45,
         splashRadius: 1.6,
@@ -163,7 +163,7 @@ export const towerDefinitions: TowerDefinition[] = [
         damage: 20,
         fireRate: 0.9,
         projectileSpeed: 10,
-        stunDuration: 0.23
+        stunDuration: 0.20
       },
       {
         level: 2,
@@ -172,7 +172,7 @@ export const towerDefinitions: TowerDefinition[] = [
         damage: 28,
         fireRate: 1,
         projectileSpeed: 11,
-        stunDuration: 0.28
+        stunDuration: 0.25
       },
       {
         level: 3,
@@ -181,7 +181,7 @@ export const towerDefinitions: TowerDefinition[] = [
         damage: 38,
         fireRate: 1.1,
         projectileSpeed: 11.5,
-        stunDuration: 0.35
+        stunDuration: 0.325
       }
     ]
   }

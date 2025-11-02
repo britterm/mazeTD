@@ -13,7 +13,6 @@ export class GameEngine {
     coreWorld;
     interestRate = Math.max(0, BASE_INTEREST_RATE);
     duplicateTowerPremium = 5;
-    wallConversionDiscount = 2;
     state;
     listeners = new Set();
     debug = {
@@ -109,6 +108,9 @@ export class GameEngine {
         const def = this.getTowerDefinition(towerType);
         if (!def) {
             return { success: false, reason: "Unknown tower" };
+        }
+        if (!this.grid.isBuildable(coord)) {
+            return { success: false, reason: "Cannot build on this tile" };
         }
         if (!this.grid.canPlace(coord, def.passable)) {
             return { success: false, reason: "Placement blocks path" };
@@ -263,7 +265,16 @@ export class GameEngine {
         const baseCost = targetDef.id === "wall"
             ? baseLevel.cost
             : baseLevel.cost + existingCount * this.duplicateTowerPremium;
-        const netCost = Math.max(0, baseCost - this.wallConversionDiscount);
+        const wallDefinition = this.getTowerDefinition(tower.towerType);
+        let investedCost = 0;
+        if (wallDefinition) {
+            for (const level of wallDefinition.levels) {
+                if (level.level <= tower.level) {
+                    investedCost += level.cost;
+                }
+            }
+        }
+        const netCost = Math.max(0, baseCost - investedCost);
         return netCost;
     }
     tick(deltaMs) {
@@ -351,6 +362,9 @@ export class GameEngine {
     }
     getBoardCells() {
         return this.grid.getAllCells();
+    }
+    getCellVariant(coord) {
+        return this.grid.getCellVariant(coord);
     }
     keyOf(coord) {
         return this.topology.keyOf(coord);

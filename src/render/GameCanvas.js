@@ -5,6 +5,8 @@ import { towerDefinitionMap } from "../game/config/towers";
 import { enemyDefinitionMap } from "../game/config/enemies";
 import { createCrawlerSpriteSheet } from "./sprites/crawler";
 import { createSkitterSpriteSheet } from "./sprites/skitter";
+import { createBruteSpriteSheet } from "./sprites/brute";
+import { createColossusSpriteSheet } from "./sprites/colossus";
 const SQRT3 = Math.sqrt(3);
 const TOWER_COLOR_PALETTE = {
     wall: ['#6c757d', '#7f8996', '#8a94a1'],
@@ -40,6 +42,8 @@ export const GameCanvas = () => {
     const lastFrameTimeRef = useRef(typeof performance !== "undefined" ? performance.now() : Date.now());
     const crawlerSpriteRef = useRef(null);
     const skitterSpriteRef = useRef(null);
+    const bruteSpriteRef = useRef(null);
+    const colossusSpriteRef = useRef(null);
     const boardCells = useMemo(() => engine.getBoardCells(), [engine]);
     const boardPoints = useMemo(() => boardCells.map((cell) => engine.toWorld(cell)), [boardCells, engine]);
     const bounds = useMemo(() => computeWorldBounds(boardPoints), [boardPoints]);
@@ -54,6 +58,18 @@ export const GameCanvas = () => {
             const sheet = createSkitterSpriteSheet();
             if (sheet) {
                 skitterSpriteRef.current = sheet;
+            }
+        }
+        if (!bruteSpriteRef.current) {
+            const sheet = createBruteSpriteSheet();
+            if (sheet) {
+                bruteSpriteRef.current = sheet;
+            }
+        }
+        if (!colossusSpriteRef.current) {
+            const sheet = createColossusSpriteSheet();
+            if (sheet) {
+                colossusSpriteRef.current = sheet;
             }
         }
     }, []);
@@ -125,7 +141,7 @@ export const GameCanvas = () => {
         drawCore(ctx, snap.core, engine.getCellRadius(), scale, offsetX, offsetY);
         drawTowers(ctx, snap, engine, scale, offsetX, offsetY, activeId ?? null, rangeAlpha);
         drawEffects(ctx, snap.effects, scale, offsetX, offsetY, now);
-        drawEnemies(ctx, snap, scale, offsetX, offsetY, delta, enemyAnimationRef.current, crawlerSpriteRef.current, skitterSpriteRef.current);
+        drawEnemies(ctx, snap, scale, offsetX, offsetY, delta, enemyAnimationRef.current, crawlerSpriteRef.current, skitterSpriteRef.current, bruteSpriteRef.current, colossusSpriteRef.current);
         drawProjectiles(ctx, snap, scale, offsetX, offsetY);
     }, [boardCells, bounds, engine]);
     useEffect(() => {
@@ -252,6 +268,80 @@ const drawCore = (ctx, core, cellRadius, scale, offsetX, offsetY) => {
     ctx.fill();
     ctx.restore();
 };
+const CELL_STYLE_MAP = {
+    default: { fill: '#1c2430', stroke: '#2f3b4c', pathFill: '#29344f', pathStroke: '#4d6d9a' },
+    'hole': { fill: '#090d17', stroke: '#1b2535' },
+    'raised-block': { fill: '#3b2c1f', stroke: '#6f5236' },
+    'no-build-path': { fill: '#203245', stroke: '#3b5167', pathFill: '#315070', pathStroke: '#4f7aa2' }
+};
+const getCellColors = (variant, isPath) => {
+    const style = CELL_STYLE_MAP[variant] ?? CELL_STYLE_MAP.default;
+    if (isPath) {
+        const fill = style.pathFill ?? CELL_STYLE_MAP.default.pathFill ?? '#29344f';
+        const stroke = style.pathStroke ?? CELL_STYLE_MAP.default.pathStroke ?? '#4d6d9a';
+        return { fill, stroke };
+    }
+    return { fill: style.fill, stroke: style.stroke };
+};
+const traceHex = (ctx, x, y, radius) => {
+    for (let i = 0; i < 6; i += 1) {
+        const angle = (Math.PI / 3) * i;
+        const px = x + Math.cos(angle) * radius;
+        const py = y + Math.sin(angle) * radius;
+        if (i === 0) {
+            ctx.moveTo(px, py);
+        }
+        else {
+            ctx.lineTo(px, py);
+        }
+    }
+    ctx.closePath();
+};
+const drawVariantOverlay = (ctx, variant, x, y, radius) => {
+    switch (variant) {
+        case 'hole': {
+            ctx.save();
+            ctx.beginPath();
+            traceHex(ctx, x, y, radius * 0.55);
+            ctx.fillStyle = '#040610';
+            ctx.globalAlpha = 0.85;
+            ctx.fill();
+            ctx.restore();
+            break;
+        }
+        case 'raised-block': {
+            ctx.save();
+            ctx.beginPath();
+            traceHex(ctx, x, y, radius * 0.58);
+            ctx.fillStyle = '#a8814c';
+            ctx.globalAlpha = 0.35;
+            ctx.fill();
+            ctx.lineWidth = 1.4;
+            ctx.strokeStyle = '#d1b07a';
+            ctx.globalAlpha = 0.65;
+            ctx.stroke();
+            ctx.restore();
+            break;
+        }
+        case 'no-build-path': {
+            ctx.save();
+            ctx.strokeStyle = '#6ea7ff';
+            ctx.lineWidth = Math.max(1, radius * 0.18);
+            const dash = Math.max(3, radius * 0.4);
+            ctx.setLineDash([dash, dash * 0.7]);
+            ctx.beginPath();
+            ctx.moveTo(x - radius * 0.6, y - radius * 0.15);
+            ctx.lineTo(x + radius * 0.6, y + radius * 0.15);
+            ctx.moveTo(x - radius * 0.6, y + radius * 0.15);
+            ctx.lineTo(x + radius * 0.6, y - radius * 0.15);
+            ctx.stroke();
+            ctx.restore();
+            break;
+        }
+        default:
+            break;
+    }
+};
 const drawCells = (ctx, cells, path, engine, scale, offsetX, offsetY) => {
     const radius = engine.getCellRadius() * scale * 0.95;
     const pathKeys = new Set((path ?? []).map((coord) => engine.keyOf(coord)));
@@ -260,24 +350,16 @@ const drawCells = (ctx, cells, path, engine, scale, offsetX, offsetY) => {
         const screenX = world.x * scale + offsetX;
         const screenY = world.y * scale + offsetY;
         const isPath = pathKeys.has(engine.keyOf(cell));
+        const variant = engine.getCellVariant ? engine.getCellVariant(cell) : 'default';
+        const colors = getCellColors(variant, isPath);
         ctx.beginPath();
-        for (let i = 0; i < 6; i += 1) {
-            const angle = (Math.PI / 3) * i;
-            const px = screenX + Math.cos(angle) * radius;
-            const py = screenY + Math.sin(angle) * radius;
-            if (i === 0) {
-                ctx.moveTo(px, py);
-            }
-            else {
-                ctx.lineTo(px, py);
-            }
-        }
-        ctx.closePath();
-        ctx.fillStyle = isPath ? "#29344f" : "#1c2430";
-        ctx.strokeStyle = isPath ? "#4d6d9a" : "#2f3b4c";
+        traceHex(ctx, screenX, screenY, radius);
+        ctx.fillStyle = colors.fill;
+        ctx.strokeStyle = colors.stroke;
         ctx.lineWidth = 2;
         ctx.fill();
         ctx.stroke();
+        drawVariantOverlay(ctx, variant, screenX, screenY, radius);
     }
 };
 const drawEffects = (ctx, effects, scale, offsetX, offsetY, now) => {
@@ -394,7 +476,7 @@ const drawTowers = (ctx, snapshot, engine, scale, offsetX, offsetY, activeTowerI
         }
     }
 };
-const drawEnemies = (ctx, snapshot, scale, offsetX, offsetY, deltaMs, animationStates, crawlerSprite, skitterSprite) => {
+const drawEnemies = (ctx, snapshot, scale, offsetX, offsetY, deltaMs, animationStates, crawlerSprite, skitterSprite, bruteSprite, colossusSprite) => {
     const baseSize = 12 * scale;
     const activeSpriteIds = [];
     for (const enemy of snapshot.enemies) {
@@ -416,6 +498,12 @@ const drawEnemies = (ctx, snapshot, scale, offsetX, offsetY, deltaMs, animationS
         }
         else if (enemy.enemyId === "swarm") {
             sprite = skitterSprite;
+        }
+        else if (enemy.enemyId === "brute") {
+            sprite = bruteSprite;
+        }
+        else if (enemy.enemyId === "colossus") {
+            sprite = colossusSprite;
         }
         if (sprite && sprite.image && sprite.isLoaded()) {
             activeSpriteIds.push(enemy.id);

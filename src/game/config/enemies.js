@@ -27,7 +27,7 @@ export const enemyDefinitions = [
         baseSpeed: 0.53,
         damage: 4,
         reward: 12,
-        size: 1.2,
+        size: 2.75,
         resistances: { physical: 0.15 }
     },
     {
@@ -44,11 +44,11 @@ export const enemyDefinitions = [
         id: "colossus",
         name: "Colossus",
         category: "boss",
-        baseHealth: 1000,
-        baseSpeed: 0.5,
+        baseHealth: 950,
+        baseSpeed: 0.40,
         damage: 10,
         reward: 65,
-        size: 1.6,
+        size: 3,
         resistances: { fire: 0.2, lightning: 0.1 }
     }
 ];

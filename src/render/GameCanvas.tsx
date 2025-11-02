@@ -4,8 +4,11 @@ import { useGame } from "../game/GameProvider";
 import { GameSnapshot } from "../game/GameEngine";
 import { towerDefinitionMap } from "../game/config/towers";
 import { enemyDefinitionMap } from "../game/config/enemies";
+import { GridCellVariant } from "../core/grid/GridBlueprint";
 import { createCrawlerSpriteSheet, type CrawlerSpriteSheet, type HexDirectionKey } from "./sprites/crawler";
 import { createSkitterSpriteSheet } from "./sprites/skitter";
+import { createBruteSpriteSheet } from "./sprites/brute";
+import { createColossusSpriteSheet } from "./sprites/colossus";
 
 type DirectionalSpriteSheet = CrawlerSpriteSheet;
 
@@ -63,6 +66,8 @@ export const GameCanvas = () => {
   const lastFrameTimeRef = useRef<number>(typeof performance !== "undefined" ? performance.now() : Date.now());
   const crawlerSpriteRef = useRef<DirectionalSpriteSheet | null>(null);
   const skitterSpriteRef = useRef<DirectionalSpriteSheet | null>(null);
+  const bruteSpriteRef = useRef<DirectionalSpriteSheet | null>(null);
+  const colossusSpriteRef = useRef<DirectionalSpriteSheet | null>(null);
 
   const boardCells = useMemo(() => engine.getBoardCells(), [engine]);
   const boardPoints = useMemo(() => boardCells.map((cell) => engine.toWorld(cell)), [boardCells, engine]);
@@ -79,6 +84,18 @@ export const GameCanvas = () => {
       const sheet = createSkitterSpriteSheet();
       if (sheet) {
         skitterSpriteRef.current = sheet;
+      }
+    }
+    if (!bruteSpriteRef.current) {
+      const sheet = createBruteSpriteSheet();
+      if (sheet) {
+        bruteSpriteRef.current = sheet;
+      }
+    }
+    if (!colossusSpriteRef.current) {
+      const sheet = createColossusSpriteSheet();
+      if (sheet) {
+        colossusSpriteRef.current = sheet;
       }
     }
   }, []);
@@ -172,7 +189,9 @@ export const GameCanvas = () => {
       delta,
       enemyAnimationRef.current,
       crawlerSpriteRef.current,
-      skitterSpriteRef.current
+      skitterSpriteRef.current,
+      bruteSpriteRef.current,
+      colossusSpriteRef.current
     );
     drawProjectiles(ctx, snap, scale, offsetX, offsetY);
   }, [boardCells, bounds, engine]);
@@ -320,11 +339,93 @@ const drawCore = (
   ctx.restore();
 };
 
+const CELL_STYLE_MAP: Record<GridCellVariant, { fill: string; stroke: string; pathFill?: string; pathStroke?: string }> = {
+  default: { fill: '#1c2430', stroke: '#2f3b4c', pathFill: '#29344f', pathStroke: '#4d6d9a' },
+  'hole': { fill: '#090d17', stroke: '#1b2535' },
+  'raised-block': { fill: '#3b2c1f', stroke: '#6f5236' },
+  'no-build-path': { fill: '#203245', stroke: '#3b5167', pathFill: '#315070', pathStroke: '#4f7aa2' }
+};
+
+const getCellColors = (variant: GridCellVariant, isPath: boolean): { fill: string; stroke: string } => {
+  const style = CELL_STYLE_MAP[variant] ?? CELL_STYLE_MAP.default;
+  if (isPath) {
+    const fill = style.pathFill ?? CELL_STYLE_MAP.default.pathFill ?? '#29344f';
+    const stroke = style.pathStroke ?? CELL_STYLE_MAP.default.pathStroke ?? '#4d6d9a';
+    return { fill, stroke };
+  }
+  return { fill: style.fill, stroke: style.stroke };
+};
+
+const traceHex = (ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) => {
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (Math.PI / 3) * i;
+    const px = x + Math.cos(angle) * radius;
+    const py = y + Math.sin(angle) * radius;
+    if (i === 0) {
+      ctx.moveTo(px, py);
+    } else {
+      ctx.lineTo(px, py);
+    }
+  }
+  ctx.closePath();
+};
+
+const drawVariantOverlay = (ctx: CanvasRenderingContext2D, variant: GridCellVariant, x: number, y: number, radius: number) => {
+  switch (variant) {
+    case 'hole': {
+      ctx.save();
+      ctx.beginPath();
+      traceHex(ctx, x, y, radius * 0.55);
+      ctx.fillStyle = '#040610';
+      ctx.globalAlpha = 0.85;
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'raised-block': {
+      ctx.save();
+      ctx.beginPath();
+      traceHex(ctx, x, y, radius * 0.58);
+      ctx.fillStyle = '#a8814c';
+      ctx.globalAlpha = 0.35;
+      ctx.fill();
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = '#d1b07a';
+      ctx.globalAlpha = 0.65;
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'no-build-path': {
+      ctx.save();
+      ctx.strokeStyle = '#6ea7ff';
+      ctx.lineWidth = Math.max(1, radius * 0.18);
+      const dash = Math.max(3, radius * 0.4);
+      ctx.setLineDash([dash, dash * 0.7]);
+      ctx.beginPath();
+      ctx.moveTo(x - radius * 0.6, y - radius * 0.15);
+      ctx.lineTo(x + radius * 0.6, y + radius * 0.15);
+      ctx.moveTo(x - radius * 0.6, y + radius * 0.15);
+      ctx.lineTo(x + radius * 0.6, y - radius * 0.15);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    default:
+      break;
+  }
+};
+
 const drawCells = (
   ctx: CanvasRenderingContext2D,
   cells: any[],
   path: any[] | undefined,
-  engine: { toWorld: (coord: any) => WorldPoint; getCellRadius: () => number; keyOf: (coord: any) => string },
+  engine: {
+    toWorld: (coord: any) => WorldPoint;
+    getCellRadius: () => number;
+    keyOf: (coord: any) => string;
+    getCellVariant: (coord: any) => GridCellVariant;
+  },
   scale: number,
   offsetX: number,
   offsetY: number
@@ -336,25 +437,19 @@ const drawCells = (
     const screenX = world.x * scale + offsetX;
     const screenY = world.y * scale + offsetY;
     const isPath = pathKeys.has(engine.keyOf(cell));
+    const variant = engine.getCellVariant ? engine.getCellVariant(cell) : ('default' as GridCellVariant);
+    const colors = getCellColors(variant, isPath);
 
     ctx.beginPath();
-    for (let i = 0; i < 6; i += 1) {
-      const angle = (Math.PI / 3) * i;
-      const px = screenX + Math.cos(angle) * radius;
-      const py = screenY + Math.sin(angle) * radius;
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
-    }
-    ctx.closePath();
+    traceHex(ctx, screenX, screenY, radius);
 
-    ctx.fillStyle = isPath ? "#29344f" : "#1c2430";
-    ctx.strokeStyle = isPath ? "#4d6d9a" : "#2f3b4c";
+    ctx.fillStyle = colors.fill;
+    ctx.strokeStyle = colors.stroke;
     ctx.lineWidth = 2;
     ctx.fill();
     ctx.stroke();
+
+    drawVariantOverlay(ctx, variant, screenX, screenY, radius);
   }
 };
 
@@ -520,7 +615,9 @@ const drawEnemies = (
   deltaMs: number,
   animationStates: Map<string, EnemyAnimationState>,
   crawlerSprite: DirectionalSpriteSheet | null,
-  skitterSprite: DirectionalSpriteSheet | null
+  skitterSprite: DirectionalSpriteSheet | null,
+  bruteSprite: DirectionalSpriteSheet | null,
+  colossusSprite: DirectionalSpriteSheet | null
 ) => {
   const baseSize = 12 * scale;
   const activeSpriteIds: string[] = [];
@@ -545,6 +642,10 @@ const drawEnemies = (
       sprite = crawlerSprite;
     } else if (enemy.enemyId === "swarm") {
       sprite = skitterSprite;
+    } else if (enemy.enemyId === "brute") {
+      sprite = bruteSprite;
+    } else if (enemy.enemyId === "colossus") {
+      sprite = colossusSprite;
     }
 
     if (sprite && sprite.image && sprite.isLoaded()) {

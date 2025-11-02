@@ -1,17 +1,31 @@
 import { aStar } from "../pathfinding/aStar";
 import { GridTopology } from "../topology/GridTopology";
-import { GridBlueprint } from "./GridBlueprint";
+import { GridBlueprint, GridCellMetadata, GridCellVariant } from "./GridBlueprint";
 
 interface OccupancyState {
   entityId: string;
   passable: boolean;
 }
 
+interface CellProperties {
+  variant: GridCellVariant;
+  buildable: boolean;
+  passable: boolean;
+}
+
+const DEFAULT_CELL_PROPERTIES: CellProperties = {
+  variant: 'default',
+  buildable: true,
+  passable: true
+};
+
 export class GridManager<Coord> {
   private readonly topology: GridTopology<Coord>;
   private readonly blueprint: GridBlueprint<Coord>;
   private readonly cellMap: Map<string, Coord> = new Map();
   private readonly occupancy: Map<string, OccupancyState> = new Map();
+  private readonly baseOccupancy: Map<string, OccupancyState> = new Map();
+  private readonly cellProperties: Map<string, CellProperties> = new Map();
 
   constructor(topology: GridTopology<Coord>, blueprint: GridBlueprint<Coord>) {
     this.topology = topology;
@@ -20,14 +34,62 @@ export class GridManager<Coord> {
     for (const cell of blueprint.cells) {
       this.cellMap.set(this.topology.keyOf(cell), cell);
     }
-  }
 
+    this.applyCellVariants(blueprint.cellVariants ?? []);
+  }
   get spawn(): Coord {
     return this.blueprint.spawn;
   }
 
   get goal(): Coord {
     return this.blueprint.goal;
+  }
+
+  private applyCellVariants(variants: GridCellMetadata<Coord>[]): void {
+    for (const { coord, variant } of variants) {
+      const key = this.topology.keyOf(coord);
+      if (!this.cellMap.has(key)) {
+        continue;
+      }
+      if (key === this.topology.keyOf(this.spawn) || key === this.topology.keyOf(this.goal)) {
+        continue;
+      }
+      const properties = this.resolveCellProperties(variant);
+      this.cellProperties.set(key, properties);
+      if (!properties.passable) {
+        const state: OccupancyState = { entityId: `__terrain_${variant}__`, passable: false };
+        this.baseOccupancy.set(key, state);
+        this.occupancy.set(key, state);
+      }
+    }
+  }
+
+  private resolveCellProperties(variant: GridCellVariant): CellProperties {
+    switch (variant) {
+      case 'hole':
+      case 'raised-block':
+        return { variant, buildable: false, passable: false };
+      case 'no-build-path':
+        return { variant, buildable: false, passable: true };
+      default:
+        return DEFAULT_CELL_PROPERTIES;
+    }
+  }
+
+  getCellProperties(coord: Coord): CellProperties {
+    const key = this.topology.keyOf(coord);
+    return this.cellProperties.get(key) ?? DEFAULT_CELL_PROPERTIES;
+  }
+
+  getCellVariant(coord: Coord): GridCellVariant {
+    return this.getCellProperties(coord).variant;
+  }
+
+  isBuildable(coord: Coord): boolean {
+    if (!this.isWithinBounds(coord)) {
+      return false;
+    }
+    return this.getCellProperties(coord).buildable;
   }
 
   getAllCells(): Coord[] {
@@ -52,6 +114,12 @@ export class GridManager<Coord> {
     const key = this.topology.keyOf(coord);
     if (state) {
       this.occupancy.set(key, state);
+      return;
+    }
+
+    const base = this.baseOccupancy.get(key);
+    if (base) {
+      this.occupancy.set(key, base);
     } else {
       this.occupancy.delete(key);
     }
@@ -67,6 +135,10 @@ export class GridManager<Coord> {
     }
 
     const existing = this.occupancy.get(key);
+    if (!this.isBuildable(coord)) {
+      return false;
+    }
+
     if (existing && !existing.passable) {
       return false;
     }

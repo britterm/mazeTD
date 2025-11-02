@@ -1,4 +1,5 @@
 import { GridManager } from "../core/grid/GridManager";
+import { GridCellVariant } from "../core/grid/GridBlueprint";
 import { GridTopology } from "../core/topology/GridTopology";
 import { getTowerSellValue, towerDefinitionMap } from "./config/towers";
 import economyConfig from "../data/economy.json";
@@ -144,7 +145,6 @@ export class GameEngine<Coord> {
   private readonly interestRate = Math.max(0, BASE_INTEREST_RATE);
 
   private readonly duplicateTowerPremium = 5;
-  private readonly wallConversionDiscount = 2;
 
   private state: GameState<Coord>;
   private listeners = new Set<(snapshot: GameSnapshot<Coord>) => void>();
@@ -259,6 +259,10 @@ export class GameEngine<Coord> {
     const def = this.getTowerDefinition(towerType);
     if (!def) {
       return { success: false, reason: "Unknown tower" };
+    }
+
+    if (!this.grid.isBuildable(coord)) {
+      return { success: false, reason: "Cannot build on this tile" };
     }
 
     if (!this.grid.canPlace(coord, def.passable)) {
@@ -443,7 +447,18 @@ export class GameEngine<Coord> {
     const baseCost = targetDef.id === "wall"
       ? baseLevel.cost
       : baseLevel.cost + existingCount * this.duplicateTowerPremium;
-    const netCost = Math.max(0, baseCost - this.wallConversionDiscount);
+
+    const wallDefinition = this.getTowerDefinition(tower.towerType);
+    let investedCost = 0;
+    if (wallDefinition) {
+      for (const level of wallDefinition.levels) {
+        if (level.level <= tower.level) {
+          investedCost += level.cost;
+        }
+      }
+    }
+
+    const netCost = Math.max(0, baseCost - investedCost);
     return netCost;
   }
 
@@ -547,6 +562,11 @@ export class GameEngine<Coord> {
   getBoardCells(): Coord[] {
     return this.grid.getAllCells();
   }
+
+  getCellVariant(coord: Coord): GridCellVariant {
+    return this.grid.getCellVariant(coord);
+  }
+
 
   keyOf(coord: Coord): string {
     return this.topology.keyOf(coord);

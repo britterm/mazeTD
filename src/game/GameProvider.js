@@ -6,6 +6,23 @@ import { createHexBoardBlueprint } from "./config/board";
 import { GameEngine } from "./GameEngine";
 import { useAnimationFrame } from "../hooks/useAnimationFrame";
 import speedConfig from "../data/game-speed.json";
+const HIGH_SCORE_STORAGE_KEY = "mazeTD:high-score";
+const readStoredHighScore = () => {
+    if (typeof window === "undefined") {
+        return 0;
+    }
+    try {
+        const raw = window.localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+        if (!raw) {
+            return 0;
+        }
+        const parsed = Number.parseInt(raw, 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    }
+    catch {
+        return 0;
+    }
+};
 const speedConfigData = speedConfig;
 const configuredSpeedOptions = Array.isArray(speedConfigData.speedOptions) ? speedConfigData.speedOptions : [];
 const GameContext = createContext(undefined);
@@ -18,6 +35,7 @@ export const GameProvider = ({ children }) => {
     const gridManager = useMemo(() => new GridManager(topology, blueprint), [topology, blueprint]);
     const [engine] = useState(() => new GameEngine({ topology, grid: gridManager }));
     const [snapshot, setSnapshot] = useState(engine.snapshot());
+    const [highScore, setHighScore] = useState(() => readStoredHighScore());
     const [selectedTower, setSelectedTower] = useState("lightning");
     const [activeTowerId, setActiveTowerId] = useState(null);
     const [statusMessage, setStatusMessage] = useState(null);
@@ -45,6 +63,21 @@ export const GameProvider = ({ children }) => {
     const defaultSpeed = gameSpeedOptions[0]?.value ?? 1;
     const [gameSpeed, setGameSpeed] = useState(defaultSpeed);
     useEffect(() => engine.subscribe(setSnapshot), [engine]);
+    useEffect(() => {
+        const currentScore = Math.max(0, Math.floor(snapshot.score));
+        if (!Number.isFinite(currentScore) || currentScore <= highScore) {
+            return;
+        }
+        setHighScore(currentScore);
+        if (typeof window !== "undefined") {
+            try {
+                window.localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(currentScore));
+            }
+            catch {
+                // ignore persistence failures
+            }
+        }
+    }, [snapshot.score, highScore]);
     useEffect(() => {
         if (activeTowerId && !snapshot.towers.some((tower) => tower.id === activeTowerId)) {
             setActiveTowerId(null);
@@ -126,7 +159,8 @@ export const GameProvider = ({ children }) => {
         setStatusMessage,
         gameSpeed,
         setGameSpeed: applyGameSpeed,
-        gameSpeedOptions
+        gameSpeedOptions,
+        highScore
     }), [
         engine,
         snapshot,
@@ -135,6 +169,7 @@ export const GameProvider = ({ children }) => {
         statusMessage,
         gameSpeed,
         gameSpeedOptions,
+        highScore,
         applyGameSpeed,
         upgradeTower,
         convertWallTower,
