@@ -149,6 +149,73 @@ export class GameEngine {
         this.notify();
         return { success: true, towerId };
     }
+    clearTerrain(coord, cost) {
+        const variant = this.grid.getCellVariant(coord);
+        if (variant !== 'clearable') {
+            return { success: false, reason: "Terrain cannot be cleared" };
+        }
+        if (cost > 0 && this.state.credits < cost) {
+            return { success: false, reason: "Not enough credits" };
+        }
+        if (cost > 0) {
+            this.state.credits -= cost;
+        }
+        this.grid.resetCellVariant(coord);
+        const towerId = this.placeTowerWithoutCost(coord, 'wall');
+        if (!towerId) {
+            if (cost > 0) {
+                this.state.credits += cost;
+            }
+            this.grid.setCellVariant(coord, 'clearable');
+            return { success: false, reason: "Unable to clear terrain" };
+        }
+        if (cost > 0) {
+            this.logEvent(`Cleared debris for ${cost} credits`);
+        }
+        else {
+            this.logEvent('Cleared debris');
+        }
+        this.notify();
+        return { success: true, towerId };
+    }
+    placeTowerWithoutCost(coord, towerType) {
+        const def = this.getTowerDefinition(towerType);
+        if (!def) {
+            return null;
+        }
+        if (!this.grid.isBuildable(coord)) {
+            return null;
+        }
+        if (!this.grid.canPlace(coord, def.passable)) {
+            return null;
+        }
+        const key = this.topology.keyOf(coord);
+        for (const existing of this.state.towers.values()) {
+            if (existing.coordKey === key) {
+                return null;
+            }
+        }
+        const level = def.levels[0];
+        if (!level) {
+            return null;
+        }
+        const towerId = `tower-${this.state.nextTowerId++}`;
+        const worldPosition = this.grid.toWorld(coord);
+        const tower = {
+            id: towerId,
+            towerType: def.id,
+            coordKey: key,
+            coord,
+            level: level.level,
+            cooldownRemaining: 0,
+            lastShotAt: 0,
+            worldPosition
+        };
+        this.state.towers.set(towerId, tower);
+        this.grid.setOccupant(coord, { entityId: towerId, passable: def.passable });
+        this.recomputePath();
+        return towerId;
+    }
     upgradeTower(towerId) {
         const tower = this.state.towers.get(towerId);
         if (!tower) {

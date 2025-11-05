@@ -1,0 +1,14 @@
+{
+  "randomSeed": 1337,
+  "levelCount": 6,
+  "wavesPerLevel": 30,
+  "startingDensity": 0.08,
+  "endingDensity": 0.28,
+  "tileProportions": {
+    "normal": 0.55,
+    "hole": 0.2,
+    "clearable": 0.15,
+    "water": 0.1
+  },
+  "clearCost": 100
+}

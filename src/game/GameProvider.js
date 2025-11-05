@@ -1,45 +1,78 @@
 import { jsx as _jsx } from "react/jsx-runtime";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createHexTopology } from "../core/topology/hexTopology";
 import { GridManager } from "../core/grid/GridManager";
-import { createHexBoardBlueprint } from "./config/board";
 import { GameEngine } from "./GameEngine";
 import { useAnimationFrame } from "../hooks/useAnimationFrame";
 import speedConfig from "../data/game-speed.json";
-const HIGH_SCORE_STORAGE_KEY = "mazeTD:high-score";
-const readStoredHighScore = () => {
-    if (typeof window === "undefined") {
-        return 0;
-    }
-    try {
-        const raw = window.localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
-        if (!raw) {
-            return 0;
-        }
-        const parsed = Number.parseInt(raw, 10);
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-    }
-    catch {
-        return 0;
-    }
-};
-const speedConfigData = speedConfig;
+import { createLevelBlueprint, staticLevelSettings } from "./config/levels";
+import { waveSchedule } from "./config/enemies";
+const PROGRESS_STORAGE_KEY = "mazeTD:level-progress";
+const DEFAULT_PROGRESS = { unlockedLevelIndex: 0, bestScores: {} };
+const speedConfigData = speedConfig ?? {};
 const configuredSpeedOptions = Array.isArray(speedConfigData.speedOptions) ? speedConfigData.speedOptions : [];
 const GameContext = createContext(undefined);
-export const GameProvider = ({ children }) => {
-    if (typeof window !== "undefined" && window.__MAZETD_DEBUG === undefined) {
-        window.__MAZETD_DEBUG = true;
+const clampNumber = (value, min, max) => Math.min(max, Math.max(min, value));
+const readStoredProgress = (maxLevels) => {
+    if (typeof window === "undefined") {
+        return DEFAULT_PROGRESS;
     }
+    try {
+        const raw = window.localStorage.getItem(PROGRESS_STORAGE_KEY);
+        if (!raw) {
+            return DEFAULT_PROGRESS;
+        }
+        const parsed = JSON.parse(raw);
+        const unlocked = typeof parsed.unlockedLevelIndex === "number" ? parsed.unlockedLevelIndex : 0;
+        const bestScores = typeof parsed.bestScores === "object" && parsed.bestScores ? parsed.bestScores : {};
+        const stored = {
+            unlockedLevelIndex: clampNumber(Math.floor(unlocked), 0, Math.max(0, maxLevels - 1)),
+            bestScores
+        };
+        if (new URLSearchParams(window.location.search).get("winner") === "true") {
+            return {
+                unlockedLevelIndex: Math.max(0, maxLevels - 1),
+                bestScores: stored.bestScores
+            };
+        }
+        return stored;
+    }
+    catch {
+        return DEFAULT_PROGRESS;
+    }
+};
+const buildLevelSummaries = (definitions, progress) => {
+    return definitions.map((definition, index) => {
+        const bestScore = progress.bestScores[definition.id] ?? 0;
+        const unlocked = index <= progress.unlockedLevelIndex;
+        return {
+            ...definition,
+            bestScore,
+            unlocked,
+            completed: bestScore > 0
+        };
+    });
+};
+const createEngineForLevel = (level, topology) => {
+    const blueprint = createLevelBlueprint(6, level);
+    const gridManager = new GridManager(topology, blueprint);
+    const waves = waveSchedule.slice(0, level.waves);
+    return new GameEngine({ topology, grid: gridManager, waves });
+};
+export const GameProvider = ({ children }) => {
     const topology = useMemo(() => createHexTopology(34), []);
-    const blueprint = useMemo(() => createHexBoardBlueprint(6), []);
-    const gridManager = useMemo(() => new GridManager(topology, blueprint), [topology, blueprint]);
-    const [engine] = useState(() => new GameEngine({ topology, grid: gridManager }));
+    const baseLevels = staticLevelSettings.levels;
+    const [progress, setProgress] = useState(() => readStoredProgress(baseLevels.length));
+    const levels = useMemo(() => buildLevelSummaries(baseLevels, progress), [baseLevels, progress]);
+    const initialLevelIndex = clampNumber(progress.unlockedLevelIndex, 0, Math.max(0, baseLevels.length - 1));
+    const initialLevelDefinition = baseLevels[initialLevelIndex] ?? baseLevels[0];
+    const [engine, setEngine] = useState(() => createEngineForLevel(initialLevelDefinition, topology));
     const [snapshot, setSnapshot] = useState(engine.snapshot());
-    const [highScore, setHighScore] = useState(() => readStoredHighScore());
     const [selectedTower, setSelectedTower] = useState("lightning");
     const [activeTowerId, setActiveTowerId] = useState(null);
+    const [activeTerrain, setActiveTerrain] = useState(null);
     const [statusMessage, setStatusMessage] = useState(null);
-    const gameSpeedOptions = useMemo(() => {
+    const speedOptions = useMemo(() => {
         const seen = new Set();
         const normalized = configuredSpeedOptions
             .filter((option) => option && option.enabled !== false)
@@ -60,29 +93,16 @@ export const GameProvider = ({ children }) => {
             .sort((a, b) => a.value - b.value);
         return normalized.length > 0 ? normalized : [{ label: "1x", value: 1 }];
     }, []);
-    const defaultSpeed = gameSpeedOptions[0]?.value ?? 1;
+    const defaultSpeed = speedOptions[0]?.value ?? 1;
     const [gameSpeed, setGameSpeed] = useState(defaultSpeed);
-    useEffect(() => engine.subscribe(setSnapshot), [engine]);
+    const [phase, setPhase] = useState("title");
+    const [currentLevelId, setCurrentLevelId] = useState(initialLevelDefinition.id);
+    const currentLevel = useMemo(() => levels.find((level) => level.id === currentLevelId) ?? levels[0] ?? null, [levels, currentLevelId]);
     useEffect(() => {
-        const currentScore = Math.max(0, Math.floor(snapshot.score));
-        if (!Number.isFinite(currentScore) || currentScore <= highScore) {
-            return;
+        if (typeof window !== "undefined" && window.__MAZETD_DEBUG === undefined) {
+            window.__MAZETD_DEBUG = true;
         }
-        setHighScore(currentScore);
-        if (typeof window !== "undefined") {
-            try {
-                window.localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(currentScore));
-            }
-            catch {
-                // ignore persistence failures
-            }
-        }
-    }, [snapshot.score, highScore]);
-    useEffect(() => {
-        if (activeTowerId && !snapshot.towers.some((tower) => tower.id === activeTowerId)) {
-            setActiveTowerId(null);
-        }
-    }, [snapshot, activeTowerId]);
+    }, []);
     useEffect(() => {
         if (typeof window !== "undefined") {
             window.__MAZETD_ENGINE = engine;
@@ -93,9 +113,110 @@ export const GameProvider = ({ children }) => {
             }
         };
     }, [engine]);
+    useEffect(() => engine.subscribe(setSnapshot), [engine]);
+    useEffect(() => {
+        setActiveTerrain(null);
+    }, [engine]);
+    useEffect(() => {
+        if (activeTowerId && !snapshot.towers.some((tower) => tower.id === activeTowerId)) {
+            setActiveTowerId(null);
+        }
+    }, [snapshot, activeTowerId]);
+    useEffect(() => {
+        if (typeof window === "undefined") {
+            return;
+        }
+        try {
+            window.localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+        }
+        catch {
+            // ignore persistence errors
+        }
+    }, [progress]);
+    const prevModeRef = useRef(snapshot.mode);
+    useEffect(() => {
+        const previousMode = prevModeRef.current;
+        if (previousMode !== snapshot.mode && snapshot.mode === "victory" && currentLevel) {
+            const finalScore = Math.max(0, Math.floor(snapshot.score));
+            setProgress((prev) => {
+                const bestSoFar = prev.bestScores[currentLevel.id] ?? 0;
+                const unlockedLevelIndex = clampNumber(Math.max(prev.unlockedLevelIndex, currentLevel.index + 1), 0, Math.max(0, baseLevels.length - 1));
+                if (finalScore <= bestSoFar && unlockedLevelIndex === prev.unlockedLevelIndex) {
+                    return prev;
+                }
+                return {
+                    unlockedLevelIndex,
+                    bestScores: {
+                        ...prev.bestScores,
+                        [currentLevel.id]: Math.max(bestSoFar, finalScore)
+                    }
+                };
+            });
+        }
+        prevModeRef.current = snapshot.mode;
+    }, [snapshot.mode, snapshot.score, currentLevel, baseLevels.length]);
     useAnimationFrame((dt) => {
         engine.tick(dt * Math.max(1, gameSpeed));
     });
+    const applyGameSpeed = useCallback((speed) => {
+        if (speedOptions.some((option) => option.value === speed)) {
+            setGameSpeed(speed);
+        }
+    }, [speedOptions]);
+    const clearTerrain = useCallback((coord) => {
+        const result = engine.clearTerrain(coord, staticLevelSettings.clearCost);
+        if (!result.success) {
+            if (result.reason) {
+                setStatusMessage(result.reason);
+            }
+        }
+        else {
+            if (staticLevelSettings.clearCost > 0) {
+                setStatusMessage(`Cleared for ${staticLevelSettings.clearCost} cr`);
+            }
+            else {
+                setStatusMessage("Terrain cleared");
+            }
+            setActiveTerrain(null);
+            if (result.towerId) {
+                setActiveTowerId(result.towerId);
+                setSelectedTower(null);
+            }
+        }
+        return result;
+    }, [engine]);
+    const selectLevel = useCallback((levelId) => {
+        const summary = levels.find((level) => level.id === levelId);
+        if (!summary) {
+            setStatusMessage("Level not found");
+            return;
+        }
+        if (!summary.unlocked) {
+            setStatusMessage("Level locked");
+            return;
+        }
+        const definition = baseLevels.find((level) => level.id === levelId);
+        if (!definition) {
+            setStatusMessage("Level configuration missing");
+            return;
+        }
+        const nextEngine = createEngineForLevel(definition, topology);
+        setEngine(nextEngine);
+        setSnapshot(nextEngine.snapshot());
+        setSelectedTower("lightning");
+        setActiveTowerId(null);
+        setStatusMessage(null);
+        setActiveTerrain(null);
+        setCurrentLevelId(levelId);
+        setPhase("playing");
+    }, [levels, baseLevels, topology]);
+    const returnToTitle = useCallback(() => {
+        setPhase("title");
+        setSelectedTower(null);
+        setActiveTowerId(null);
+        setActiveTerrain(null);
+        setStatusMessage(null);
+    }, []);
     const upgradeTower = useCallback((towerId) => {
         const result = engine.upgradeTower(towerId);
         if (!result.success && result.reason) {
@@ -105,7 +226,7 @@ export const GameProvider = ({ children }) => {
             setStatusMessage(null);
         }
         return result;
-    }, [engine, setStatusMessage]);
+    }, [engine]);
     const convertWallTower = useCallback((towerId, targetType) => {
         const result = engine.convertWallTower(towerId, targetType);
         if (!result.success && result.reason) {
@@ -120,10 +241,8 @@ export const GameProvider = ({ children }) => {
             }
         }
         return result;
-    }, [engine, setStatusMessage]);
-    const getWallConversionCost = useCallback((towerId, targetType) => {
-        return engine.getWallConversionCost(towerId, targetType);
     }, [engine]);
+    const getWallConversionCost = useCallback((towerId, targetType) => engine.getWallConversionCost(towerId, targetType), [engine]);
     const sellTower = useCallback((towerId) => {
         const result = engine.sellTower(towerId);
         if (result.success) {
@@ -136,13 +255,8 @@ export const GameProvider = ({ children }) => {
             setStatusMessage(result.reason);
         }
         return result;
-    }, [engine, setStatusMessage, setActiveTowerId]);
+    }, [engine]);
     const getSellValue = useCallback((towerId) => engine.getTowerSellValue(towerId), [engine]);
-    const applyGameSpeed = useCallback((speed) => {
-        if (gameSpeedOptions.some((option) => option.value === speed)) {
-            setGameSpeed(speed);
-        }
-    }, [gameSpeedOptions]);
     const value = useMemo(() => ({
         engine,
         snapshot,
@@ -159,23 +273,38 @@ export const GameProvider = ({ children }) => {
         setStatusMessage,
         gameSpeed,
         setGameSpeed: applyGameSpeed,
-        gameSpeedOptions,
-        highScore
+        gameSpeedOptions: speedOptions,
+        highScore: currentLevel?.bestScore ?? 0,
+        phase,
+        levels,
+        currentLevel,
+        selectLevel,
+        returnToTitle,
+        activeTerrain,
+        setActiveTerrain,
+        clearTerrain,
+        clearCost: staticLevelSettings.clearCost
     }), [
         engine,
         snapshot,
         selectedTower,
         activeTowerId,
-        statusMessage,
-        gameSpeed,
-        gameSpeedOptions,
-        highScore,
-        applyGameSpeed,
         upgradeTower,
         convertWallTower,
         getWallConversionCost,
         sellTower,
-        getSellValue
+        getSellValue,
+        statusMessage,
+        gameSpeed,
+        applyGameSpeed,
+        speedOptions,
+        currentLevel,
+        phase,
+        levels,
+        selectLevel,
+        returnToTitle,
+        activeTerrain,
+        clearTerrain
     ]);
     return _jsx(GameContext.Provider, { value: value, children: children });
 };

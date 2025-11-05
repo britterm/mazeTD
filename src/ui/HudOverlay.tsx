@@ -2,11 +2,17 @@ import { useGame } from "../game/GameProvider";
 import "./HudOverlay.css";
 
 export const HudOverlay = () => {
-  const { snapshot, statusMessage, highScore } = useGame();
+  const { snapshot, statusMessage, highScore, currentLevel } = useGame();
   const currentScore = Math.max(0, Math.floor(snapshot.score));
+  const levelName = currentLevel?.name ?? "Level";
 
   return (
     <div className="hud-overlay">
+      <div className="hud-card">
+        <div className="hud-title">Level</div>
+        <div className="hud-value">{levelName}</div>
+        <div className="hud-subvalue">Best {highScore.toLocaleString()}</div>
+      </div>
       <div className="hud-card">
         <div className="hud-title">Round</div>
         <div className="hud-value">{snapshot.round}</div>
@@ -25,7 +31,6 @@ export const HudOverlay = () => {
       <div className="hud-card">
         <div className="hud-title">Score</div>
         <div className="hud-value">{currentScore.toLocaleString()}</div>
-        <div className="hud-subvalue">Best {highScore.toLocaleString()}</div>
       </div>
       <div className="hud-card">
         <div className="hud-title">Core</div>

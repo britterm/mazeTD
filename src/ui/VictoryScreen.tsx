@@ -4,9 +4,9 @@ import { getTowerSellValue } from "../game/config/towers";
 import "./VictoryScreen.css";
 
 export const VictoryScreen = () => {
-  const { snapshot, highScore } = useGame();
+  const { snapshot, highScore, levels, currentLevel, selectLevel, returnToTitle, phase } = useGame();
 
-  if (snapshot.mode !== "victory") {
+  if (phase !== "playing" || snapshot.mode !== "victory") {
     return null;
   }
 
@@ -25,6 +25,25 @@ export const VictoryScreen = () => {
     };
   }, [snapshot, highScore]);
 
+  const nextLevel = useMemo(() => {
+    if (!currentLevel) {
+      return null;
+    }
+    return levels.find((level) => level.index === currentLevel.index + 1 && level.unlocked) ?? null;
+  }, [levels, currentLevel]);
+
+  const handleReplay = () => {
+    if (currentLevel) {
+      selectLevel(currentLevel.id);
+    }
+  };
+
+  const handleNext = () => {
+    if (nextLevel) {
+      selectLevel(nextLevel.id);
+    }
+  };
+
   return (
     <div className="victory-screen">
       <div className="victory-card">
@@ -33,7 +52,7 @@ export const VictoryScreen = () => {
         <div className="victory-score">{stats.finalScore.toLocaleString()}</div>
         <div className="victory-breakdown">
           <div className="victory-stat">
-            <span className="label">High score</span>
+            <span className="label">Best score</span>
             <span className="value">{stats.bestScore.toLocaleString()}</span>
           </div>
           <div className="victory-stat">
@@ -45,11 +64,25 @@ export const VictoryScreen = () => {
             <span className="value">{stats.carriedCredits.toLocaleString()}</span>
           </div>
           <div className="victory-stat">
-            <span className="label">Rounds survived</span>
+            <span className="label">Rounds cleared</span>
             <span className="value">{stats.roundsSurvived}</span>
           </div>
         </div>
-        <button className="victory-button" onClick={() => window.location.reload()}>Play Again</button>
+        <div className="victory-actions">
+          <button className="victory-button" onClick={handleReplay}>
+            Replay Level
+          </button>
+          <button className="victory-button victory-button--secondary" onClick={returnToTitle}>
+            Level Select
+          </button>
+          <button
+            className="victory-button victory-button--primary"
+            onClick={handleNext}
+            disabled={!nextLevel}
+          >
+            {nextLevel ? `Next: ${nextLevel.name}` : "All Levels Complete"}
+          </button>
+        </div>
       </div>
     </div>
   );

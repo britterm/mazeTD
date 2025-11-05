@@ -110,3 +110,21 @@
     opacity: 1;
   }
 }
+
+.game-over-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-over-button--secondary {
+  background: linear-gradient(135deg, rgba(48, 60, 78, 0.92), rgba(32, 42, 56, 0.92));
+  color: #f2e9dd;
+  box-shadow: 0 10px 20px rgba(8, 12, 20, 0.45);
+}
+
+@media (min-width: 520px) {
+  .game-over-actions {
+    flex-direction: row;
+  }
+}

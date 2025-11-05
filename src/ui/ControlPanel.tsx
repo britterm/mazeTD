@@ -3,116 +3,84 @@ import { useGame } from "../game/GameProvider";
 import "./ControlPanel.css";
 
 export const ControlPanel = () => {
-  const { engine, snapshot, selectedTower, setSelectedTower, setStatusMessage, setActiveTowerId, gameSpeed, setGameSpeed, gameSpeedOptions } = useGame();
+  const {
+    engine,
+    snapshot,
+    selectedTower,
+    setSelectedTower,
+    setStatusMessage,
+    setActiveTowerId,
+    setActiveTerrain,
+    gameSpeed,
+    setGameSpeed,
+    gameSpeedOptions,
+    phase
+  } = useGame();
 
   const handleStartWave = () => {
     if (snapshot.mode !== "build") {
       setStatusMessage("Wave already running");
       return;
     }
+    setActiveTerrain(null);
     engine.beginRound();
     setStatusMessage("Wave launched");
   };
 
   return (
     <div className="control-panel">
-      <section className="panel-section">
-        <div className="panel-header">Wave Control</div>
-        <button className="start-btn" disabled={snapshot.mode !== "build"} onClick={handleStartWave}>
-          {snapshot.mode === "build" ? "Start Wave" : "In Progress"}
-        </button>
-        <div className="speed-controls">
-          <span className="speed-label">Game Speed</span>
-          <div className="speed-buttons">
-            {gameSpeedOptions.map(({ label, value }) => (
-              <button
-                key={value}
-                className={`speed-btn ${gameSpeed === value ? "is-active" : ""}`}
-                onClick={() => setGameSpeed(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* {snapshot.upcomingWave ? (
-          <div className="wave-preview">
-            <div className="preview-title">Next Wave</div>
-            <ul>
-              {snapshot.upcomingWave.segments.map((segment, index) => (
-                <li key={`${segment.enemyId}-${index}`}>
-                  <span>{segment.enemyId}</span>
-                  <span>x{segment.quantity}</span>
-                </li>
+      {phase !== "title" ? (
+        <section className="panel-section">
+          <div className="panel-header">Wave Control</div>
+          <button className="start-btn" disabled={snapshot.mode !== "build"} onClick={handleStartWave}>
+            {snapshot.mode === "build" ? "Start Wave" : "In Progress"}
+          </button>
+          <div className="speed-controls">
+            <span className="speed-label">Game Speed</span>
+            <div className="speed-buttons">
+              {gameSpeedOptions.map(({ label, value }) => (
+                <button
+                  key={value}
+                  className={`speed-btn ${gameSpeed === value ? "is-active" : ""}`}
+                  onClick={() => setGameSpeed(value)}
+                >
+                  {label}
+                </button>
               ))}
-              {snapshot.upcomingWave.boss ? (
-                <li className="boss-line">
-                  <span>BOSS: {snapshot.upcomingWave.boss.enemyId}</span>
-                  <span>x{snapshot.upcomingWave.boss.quantity}</span>
-                </li>
-              ) : null}
-            </ul>
+            </div>
           </div>
-        ) : null} */}
-      </section>
-
+        </section>
+      ) : null}
       <section className="panel-section">
         <div className="panel-header">Towers</div>
         <div className="tower-grid">
           {towerDefinitions.map((tower) => {
-
             const baseLevel = tower.levels[0];
-
             const isSelected = selectedTower === tower.id;
-
             const existingCount = snapshot.towers.filter((placed) => placed.type === tower.id).length;
-
             const ramp = tower.id === "wall" ? 0 : existingCount * 5;
-
             const baseCost = baseLevel?.cost ?? 0;
-
             const costLabel = ramp > 0 ? `${baseCost} + ${ramp}` : `${baseCost}`;
-
             return (
-
               <button
-
                 key={tower.id}
-
                 className={`tower-card ${isSelected ? "is-selected" : ""}`}
-
                 onClick={() => {
-
                   setActiveTowerId(null);
-
+                  setActiveTerrain(null);
                   setSelectedTower(tower.id);
-
                 }}
-
               >
                 <div className="tower-meta">
-
                   <div className="tower-name" style={{ color: tower.color }}>{tower.name}</div>
-
                   <span className="tower-cost">{costLabel} cr</span>
-
-                  {/* <span className="tower-type">{tower.category}</span> */}
-
                 </div>
-
                 <p className="tower-desc">{tower.description}</p>
-
               </button>
-
             );
-
           })}
-
-
         </div>
       </section>
     </div>
   );
 };
-
-

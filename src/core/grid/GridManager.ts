@@ -37,6 +37,7 @@ export class GridManager<Coord> {
 
     this.applyCellVariants(blueprint.cellVariants ?? []);
   }
+
   get spawn(): Coord {
     return this.blueprint.spawn;
   }
@@ -47,29 +48,16 @@ export class GridManager<Coord> {
 
   private applyCellVariants(variants: GridCellMetadata<Coord>[]): void {
     for (const { coord, variant } of variants) {
-      const key = this.topology.keyOf(coord);
-      if (!this.cellMap.has(key)) {
-        continue;
-      }
-      if (key === this.topology.keyOf(this.spawn) || key === this.topology.keyOf(this.goal)) {
-        continue;
-      }
-      const properties = this.resolveCellProperties(variant);
-      this.cellProperties.set(key, properties);
-      if (!properties.passable) {
-        const state: OccupancyState = { entityId: `__terrain_${variant}__`, passable: false };
-        this.baseOccupancy.set(key, state);
-        this.occupancy.set(key, state);
-      }
+      this.updateCellVariantInternal(coord, variant);
     }
   }
 
   private resolveCellProperties(variant: GridCellVariant): CellProperties {
     switch (variant) {
       case 'hole':
-      case 'raised-block':
+      case 'clearable':
         return { variant, buildable: false, passable: false };
-      case 'no-build-path':
+      case 'water':
         return { variant, buildable: false, passable: true };
       default:
         return DEFAULT_CELL_PROPERTIES;
@@ -83,6 +71,55 @@ export class GridManager<Coord> {
 
   getCellVariant(coord: Coord): GridCellVariant {
     return this.getCellProperties(coord).variant;
+  }
+
+  setCellVariant(coord: Coord, variant: GridCellVariant): void {
+    this.updateCellVariantInternal(coord, variant);
+  }
+
+  resetCellVariant(coord: Coord): void {
+    this.updateCellVariantInternal(coord, 'default');
+  }
+
+  private updateCellVariantInternal(coord: Coord, variant: GridCellVariant): void {
+    const key = this.topology.keyOf(coord);
+    if (!this.cellMap.has(key)) {
+      return;
+    }
+    if (key === this.topology.keyOf(this.spawn) || key === this.topology.keyOf(this.goal)) {
+      return;
+    }
+
+    if (variant === 'default') {
+      const base = this.baseOccupancy.get(key);
+      this.cellProperties.delete(key);
+      if (base) {
+        const occupant = this.occupancy.get(key);
+        if (occupant && occupant.entityId === base.entityId) {
+          this.occupancy.delete(key);
+        }
+        this.baseOccupancy.delete(key);
+      }
+      return;
+    }
+
+    const properties = this.resolveCellProperties(variant);
+    this.cellProperties.set(key, properties);
+
+    if (!properties.passable) {
+      const state: OccupancyState = { entityId: `__terrain_${variant}__`, passable: false };
+      this.baseOccupancy.set(key, state);
+      const occupant = this.occupancy.get(key);
+      if (!occupant || occupant.entityId.startsWith('__terrain_')) {
+        this.occupancy.set(key, state);
+      }
+    } else {
+      const occupant = this.occupancy.get(key);
+      if (occupant && occupant.entityId.startsWith('__terrain_')) {
+        this.occupancy.delete(key);
+      }
+      this.baseOccupancy.delete(key);
+    }
   }
 
   isBuildable(coord: Coord): boolean {

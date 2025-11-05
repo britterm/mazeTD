@@ -4,17 +4,20 @@ import { getTowerSellValue } from "../game/config/towers";
 import "./GameOverScreen.css";
 
 export const GameOverScreen = () => {
-  const { snapshot, highScore } = useGame();
+  const { snapshot, highScore, currentLevel, selectLevel, returnToTitle, phase } = useGame();
 
-  const isDefeat = snapshot.mode === "defeat";
+  if (phase !== "playing" || snapshot.mode !== "defeat") {
+    return null;
+  }
+
   const stats = useMemo(() => {
-    const levelsCleared = Math.max(0, snapshot.round - 1);
+    const roundsCleared = Math.max(0, snapshot.round - 1);
     const towerSalvage = snapshot.towers.reduce((total, tower) => total + getTowerSellValue(tower.type, tower.level), 0);
     const carriedCredits = Math.floor(snapshot.credits);
     const finalScore = Math.max(0, Math.floor(snapshot.score));
     const bestScore = Math.max(highScore, finalScore);
     return {
-      levelsCleared,
+      roundsCleared,
       towerSalvage,
       carriedCredits,
       finalScore,
@@ -22,9 +25,11 @@ export const GameOverScreen = () => {
     };
   }, [snapshot, highScore]);
 
-  if (!isDefeat) {
-    return null;
-  }
+  const handleRetry = () => {
+    if (currentLevel) {
+      selectLevel(currentLevel.id);
+    }
+  };
 
   return (
     <div className="game-over-screen">
@@ -34,7 +39,7 @@ export const GameOverScreen = () => {
         <div className="game-over-score">{stats.finalScore.toLocaleString()}</div>
         <div className="game-over-breakdown">
           <div className="game-over-stat">
-            <span className="label">High score</span>
+            <span className="label">Best score</span>
             <span className="value">{stats.bestScore.toLocaleString()}</span>
           </div>
           <div className="game-over-stat">
@@ -46,11 +51,18 @@ export const GameOverScreen = () => {
             <span className="value">{stats.carriedCredits.toLocaleString()}</span>
           </div>
           <div className="game-over-stat">
-            <span className="label">Levels cleared</span>
-            <span className="value">{stats.levelsCleared}</span>
+            <span className="label">Rounds cleared</span>
+            <span className="value">{stats.roundsCleared}</span>
           </div>
         </div>
-        <button className="game-over-button" onClick={() => window.location.reload()}>Try Again</button>
+        <div className="game-over-actions">
+          <button className="game-over-button" onClick={handleRetry}>
+            Retry Level
+          </button>
+          <button className="game-over-button game-over-button--secondary" onClick={returnToTitle}>
+            Level Select
+          </button>
+        </div>
       </div>
     </div>
   );

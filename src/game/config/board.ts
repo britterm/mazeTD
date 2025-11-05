@@ -3,7 +3,21 @@ import { HexCoord, createHexTopology } from "../../core/topology/hexTopology";
 import { GridManager } from "../../core/grid/GridManager";
 import { SquareCoord } from "../../core/topology/squareTopology";
 
-export const createHexBoardBlueprint = (radius: number): GridBlueprint<HexCoord> => {
+export type TileWeightKey = 'normal' | 'hole' | 'clearable' | 'water';
+
+export interface BoardGenerationOptions {
+  density?: number;
+  tileWeights?: Partial<Record<TileWeightKey, number>>;
+  seed?: number;
+  attempts?: number;
+}
+
+const DEFAULT_ATTEMPTS = 80;
+
+export const createHexBoardBlueprint = (
+  radius: number,
+  options: BoardGenerationOptions = {}
+): GridBlueprint<HexCoord> => {
   const cells: HexCoord[] = [];
   for (let q = -radius; q <= radius; q += 1) {
     const r1 = Math.max(-radius, -q - radius);
@@ -16,13 +30,29 @@ export const createHexBoardBlueprint = (radius: number): GridBlueprint<HexCoord>
   const spawn: HexCoord = { q: -radius, r: 0 };
   const goal: HexCoord = { q: radius, r: 0 };
 
-  const cellVariants = generateRandomVariants(cells, spawn, goal);
+  const rng = createRng(options.seed ?? Date.now());
+  const attempts = Math.max(1, Math.floor(options.attempts ?? DEFAULT_ATTEMPTS));
+  const density = clamp(options.density ?? 0, 0, 0.9);
+  const weights = normalizeWeights(options.tileWeights);
+  const eligibleIndices = collectEligibleIndices(cells, spawn, goal);
+  const targetCounts = computeTargetCounts(eligibleIndices.length, density, weights);
+
+  let variants: GridCellMetadata<HexCoord>[] = [];
+  if (targetCounts.total > 0) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      variants = sampleVariants(cells, eligibleIndices, targetCounts, rng);
+      if (validateVariantLayout(cells, spawn, goal, variants)) {
+        break;
+      }
+      variants = [];
+    }
+  }
 
   return {
     spawn,
     goal,
     cells,
-    cellVariants
+    cellVariants: variants
   };
 };
 
@@ -46,110 +76,127 @@ export const createSquareBoardBlueprint = (
     cells
   };
 };
-const HOLE_RATIO = 0.05;
-const RAISED_RATIO = 0.05;
-const NO_BUILD_RATIO = 0.05;
-const ATTEMPTS_PER_CONFIG = 30;
 
-const generateRandomVariants = (cells: HexCoord[], spawn: HexCoord, goal: HexCoord): GridCellMetadata<HexCoord>[] => {
-  if (cells.length === 0) {
-    return [];
-  }
+interface NormalizedWeights {
+  hole: number;
+  clearable: number;
+  water: number;
+  total: number;
+}
 
-  const eligibleIndices = cells
-    .map((_, index) => index)
-    .filter((index) => {
-      const coord = cells[index];
-      return !isSameCoord(coord, spawn) && !isSameCoord(coord, goal);
-    });
+interface TargetCounts {
+  hole: number;
+  clearable: number;
+  water: number;
+  total: number;
+}
 
-  if (eligibleIndices.length === 0) {
-    return [];
-  }
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
-  const total = cells.length;
-  const holeTarget = Math.max(1, Math.floor(total * HOLE_RATIO));
-  const raisedTarget = Math.max(1, Math.floor(total * RAISED_RATIO));
-  const pathTarget = Math.max(1, Math.floor(total * NO_BUILD_RATIO));
-
-  const initialHole = Math.min(holeTarget, eligibleIndices.length);
-  const remainingAfterHole = Math.max(0, eligibleIndices.length - initialHole);
-  const initialRaised = Math.min(raisedTarget, remainingAfterHole);
-  const remainingAfterRaised = Math.max(0, remainingAfterHole - initialRaised);
-  const initialPath = Math.min(pathTarget, remainingAfterRaised);
-
-  for (let holeCount = initialHole; holeCount >= 0; holeCount -= 1) {
-    for (let raisedCount = initialRaised; raisedCount >= 0; raisedCount -= 1) {
-      for (let pathCount = initialPath; pathCount >= 0; pathCount -= 1) {
-        const variants = tryGenerateVariants(cells, eligibleIndices, holeCount, raisedCount, pathCount);
-        if (!variants) {
-          continue;
-        }
-        if (validateVariantLayout(cells, spawn, goal, variants)) {
-          return variants;
-        }
-      }
+const collectEligibleIndices = (cells: HexCoord[], spawn: HexCoord, goal: HexCoord): number[] => {
+  const indices: number[] = [];
+  for (let index = 0; index < cells.length; index += 1) {
+    const coord = cells[index];
+    if (isSameCoord(coord, spawn) || isSameCoord(coord, goal)) {
+      continue;
     }
+    indices.push(index);
   }
-
-  return [];
+  return indices;
 };
 
-const tryGenerateVariants = (
+const normalizeWeights = (weights: Partial<Record<TileWeightKey | 'wall', number>> | undefined): NormalizedWeights => {
+  const safe = weights ?? {};
+  const hole = Math.max(0, safe.hole ?? 0);
+  const clearable = Math.max(0, (safe.clearable ?? safe.wall) ?? 0);
+  const water = Math.max(0, safe.water ?? 0);
+  const nonNormalTotal = hole + clearable + water;
+  if (nonNormalTotal <= 0) {
+    return { hole: 0, clearable: 0, water: 0, total: 0 };
+  }
+  return {
+    hole: hole / nonNormalTotal,
+    clearable: clearable / nonNormalTotal,
+    water: water / nonNormalTotal,
+    total: 1
+  };
+};
+
+const computeTargetCounts = (eligible: number, density: number, weights: NormalizedWeights): TargetCounts => {
+  const total = Math.min(eligible, Math.max(0, Math.round(eligible * density)));
+  if (total === 0 || weights.total === 0) {
+    return { hole: 0, clearable: 0, water: 0, total: 0 };
+  }
+
+  const provisional = [
+    { key: 'hole' as const, raw: total * weights.hole },
+    { key: 'clearable' as const, raw: total * weights.clearable },
+    { key: 'water' as const, raw: total * weights.water }
+  ];
+
+  const allocation = provisional.map((entry) => ({
+    key: entry.key,
+    value: Math.floor(entry.raw),
+    remainder: entry.raw - Math.floor(entry.raw)
+  }));
+
+  let assigned = allocation.reduce((sum, item) => sum + item.value, 0);
+  const deficit = total - assigned;
+  if (deficit > 0) {
+    allocation
+      .sort((a, b) => b.remainder - a.remainder)
+      .slice(0, deficit)
+      .forEach((item) => {
+        item.value += 1;
+      });
+    assigned = allocation.reduce((sum, item) => sum + item.value, 0);
+  }
+
+  if (assigned > total) {
+    allocation
+      .sort((a, b) => a.remainder - b.remainder)
+      .slice(0, assigned - total)
+      .forEach((item) => {
+        item.value = Math.max(0, item.value - 1);
+      });
+  }
+
+  const result: TargetCounts = {
+    hole: allocation.find((item) => item.key === 'hole')?.value ?? 0,
+    clearable: allocation.find((item) => item.key === 'clearable')?.value ?? 0,
+    water: allocation.find((item) => item.key === 'water')?.value ?? 0,
+    total
+  };
+
+  return result;
+};
+
+const sampleVariants = (
   cells: HexCoord[],
   eligibleIndices: number[],
-  holeCount: number,
-  raisedCount: number,
-  pathCount: number
-): GridCellMetadata<HexCoord>[] | null => {
-  if (eligibleIndices.length === 0) {
-    return null;
+  counts: TargetCounts,
+  rng: () => number
+): GridCellMetadata<HexCoord>[] => {
+  if (counts.total === 0) {
+    return [];
   }
 
-  for (let attempt = 0; attempt < ATTEMPTS_PER_CONFIG; attempt += 1) {
-    const pool = [...eligibleIndices];
-    const holeIndices = drawFromPool(pool, holeCount);
-    const raisedIndices = drawFromPool(pool, raisedCount);
-    const pathIndices = drawFromPool(pool, pathCount);
+  const pool = [...eligibleIndices];
+  const variants: GridCellMetadata<HexCoord>[] = [];
 
-    if (holeIndices.length < holeCount || raisedIndices.length < raisedCount || pathIndices.length < pathCount) {
-      continue;
+  const draw = (count: number, variant: GridCellVariant) => {
+    for (let i = 0; i < count && pool.length > 0; i += 1) {
+      const index = Math.floor(rng() * pool.length);
+      const cellIndex = pool.splice(index, 1)[0];
+      variants.push({ coord: cells[cellIndex], variant });
     }
+  };
 
-    const variants: GridCellMetadata<HexCoord>[] = [];
-    variants.push(...holeIndices.map((index) => ({ coord: cells[index], variant: 'hole' as GridCellVariant })));
-    variants.push(...raisedIndices.map((index) => ({ coord: cells[index], variant: 'raised-block' as GridCellVariant })));
-    variants.push(...pathIndices.map((index) => ({ coord: cells[index], variant: 'no-build-path' as GridCellVariant })));
+  draw(counts.hole, 'hole');
+  draw(counts.clearable, 'clearable');
+  draw(counts.water, 'water');
 
-    if (hasDuplicateCoords(variants)) {
-      continue;
-    }
-
-    return variants;
-  }
-
-  return null;
-};
-
-const hasDuplicateCoords = (variants: GridCellMetadata<HexCoord>[]): boolean => {
-  const seen = new Set<string>();
-  for (const entry of variants) {
-    const key = `${entry.coord.q},${entry.coord.r}`;
-    if (seen.has(key)) {
-      return true;
-    }
-    seen.add(key);
-  }
-  return false;
-};
-
-const drawFromPool = (pool: number[], count: number): number[] => {
-  const result: number[] = [];
-  for (let i = 0; i < count && pool.length > 0; i += 1) {
-    const index = Math.floor(Math.random() * pool.length);
-    result.push(pool.splice(index, 1)[0]);
-  }
-  return result;
+  return variants;
 };
 
 const validateVariantLayout = (
@@ -158,6 +205,10 @@ const validateVariantLayout = (
   goal: HexCoord,
   variants: GridCellMetadata<HexCoord>[]
 ): boolean => {
+  if (variants.length === 0) {
+    return true;
+  }
+
   try {
     const topology = createHexTopology(1);
     const grid = new GridManager(topology, { spawn, goal, cells, cellVariants: variants });
@@ -170,3 +221,13 @@ const validateVariantLayout = (
 };
 
 const isSameCoord = (a: HexCoord, b: HexCoord): boolean => a.q === b.q && a.r === b.r;
+
+const createRng = (seed: number): (() => number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};

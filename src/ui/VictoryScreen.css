@@ -111,3 +111,31 @@
     opacity: 1;
   }
 }
+
+.victory-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.victory-button--secondary {
+  background: linear-gradient(135deg, rgba(56, 74, 86, 0.9), rgba(44, 58, 70, 0.9));
+  color: #e0f2e8;
+  box-shadow: 0 10px 20px rgba(12, 18, 22, 0.45);
+}
+
+.victory-button--primary {
+  background: linear-gradient(135deg, #63f3b2, #36b98d);
+}
+
+.victory-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+@media (min-width: 520px) {
+  .victory-actions {
+    flex-direction: row;
+  }
+}

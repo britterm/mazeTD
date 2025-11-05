@@ -1,4 +1,4 @@
-export type GridCellVariant = 'default' | 'hole' | 'raised-block' | 'no-build-path';
+export type GridCellVariant = 'default' | 'hole' | 'clearable' | 'water';
 
 export interface GridCellMetadata<Coord> {
   coord: Coord;

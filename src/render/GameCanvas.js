@@ -32,7 +32,7 @@ const HEX_DIRECTION_VECTORS = {
     nw: { x: -0.8660254037844387, y: -0.5 }
 };
 export const GameCanvas = () => {
-    const { engine, snapshot, selectedTower, setSelectedTower, setStatusMessage, activeTowerId, setActiveTowerId } = useGame();
+    const { engine, snapshot, selectedTower, setSelectedTower, setStatusMessage, activeTowerId, setActiveTowerId, setActiveTerrain } = useGame();
     const canvasRef = useRef(null);
     const snapshotRef = useRef(snapshot);
     const transformRef = useRef(null);
@@ -173,6 +173,7 @@ export const GameCanvas = () => {
             };
             const coord = engine.fromWorld(worldPoint);
             if (!coord) {
+                setActiveTerrain(null);
                 if (activeTowerIdRef.current) {
                     setActiveTowerId(null);
                     setStatusMessage(null);
@@ -185,20 +186,31 @@ export const GameCanvas = () => {
                 }
                 return;
             }
+            const variant = engine.getCellVariant(coord);
             const coordKey = engine.keyOf(coord);
             const towerAt = snap.towers.find((tower) => engine.keyOf(tower.coord) === coordKey);
             if (towerAt) {
                 setSelectedTower(null);
                 setActiveTowerId(towerAt.id);
                 setStatusMessage(null);
+                setActiveTerrain(null);
+                return;
+            }
+            if (variant === 'clearable') {
+                setSelectedTower(null);
+                setActiveTowerId(null);
+                setStatusMessage(null);
+                setActiveTerrain(coord);
                 return;
             }
             if (snap.mode !== "build") {
                 setStatusMessage("Build between waves");
+                setActiveTerrain(null);
                 return;
             }
             if (!selectedTower) {
                 setActiveTowerId(null);
+                setActiveTerrain(null);
                 setStatusMessage("Select a tower to place");
                 return;
             }
@@ -208,6 +220,7 @@ export const GameCanvas = () => {
             }
             else {
                 setStatusMessage(null);
+                setActiveTerrain(null);
                 if (result.towerId) {
                     setActiveTowerId(result.towerId);
                 }
@@ -270,9 +283,9 @@ const drawCore = (ctx, core, cellRadius, scale, offsetX, offsetY) => {
 };
 const CELL_STYLE_MAP = {
     default: { fill: '#1c2430', stroke: '#2f3b4c', pathFill: '#29344f', pathStroke: '#4d6d9a' },
-    'hole': { fill: '#090d17', stroke: '#1b2535' },
-    'raised-block': { fill: '#3b2c1f', stroke: '#6f5236' },
-    'no-build-path': { fill: '#203245', stroke: '#3b5167', pathFill: '#315070', pathStroke: '#4f7aa2' }
+    'hole': { fill: '#080c16', stroke: '#192030' },
+    'clearable': { fill: '#2f3c4f', stroke: '#4a5970' },
+    'water': { fill: '#142a3f', stroke: '#2e5b86', pathFill: '#1e3f60', pathStroke: '#3d6a94' }
 };
 const getCellColors = (variant, isPath) => {
     const style = CELL_STYLE_MAP[variant] ?? CELL_STYLE_MAP.default;
@@ -309,31 +322,29 @@ const drawVariantOverlay = (ctx, variant, x, y, radius) => {
             ctx.restore();
             break;
         }
-        case 'raised-block': {
+        case 'clearable': {
             ctx.save();
             ctx.beginPath();
-            traceHex(ctx, x, y, radius * 0.58);
-            ctx.fillStyle = '#a8814c';
-            ctx.globalAlpha = 0.35;
-            ctx.fill();
-            ctx.lineWidth = 1.4;
-            ctx.strokeStyle = '#d1b07a';
-            ctx.globalAlpha = 0.65;
+            traceHex(ctx, x, y, radius * 0.6);
+            ctx.strokeStyle = '#a9c0e6';
+            ctx.lineWidth = Math.max(1.4, radius * 0.24);
+            ctx.setLineDash([Math.max(3, radius * 0.6), Math.max(2, radius * 0.35)]);
+            ctx.globalAlpha = 0.75;
             ctx.stroke();
             ctx.restore();
             break;
         }
-        case 'no-build-path': {
+        case 'water': {
             ctx.save();
-            ctx.strokeStyle = '#6ea7ff';
-            ctx.lineWidth = Math.max(1, radius * 0.18);
-            const dash = Math.max(3, radius * 0.4);
-            ctx.setLineDash([dash, dash * 0.7]);
+            ctx.globalAlpha = 0.55;
             ctx.beginPath();
-            ctx.moveTo(x - radius * 0.6, y - radius * 0.15);
-            ctx.lineTo(x + radius * 0.6, y + radius * 0.15);
-            ctx.moveTo(x - radius * 0.6, y + radius * 0.15);
-            ctx.lineTo(x + radius * 0.6, y - radius * 0.15);
+            traceHex(ctx, x, y, radius * 0.6);
+            ctx.strokeStyle = '#3d7abf';
+            ctx.lineWidth = Math.max(1.2, radius * 0.18);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 0.32, 0, Math.PI * 2);
+            ctx.lineWidth = Math.max(0.8, radius * 0.12);
             ctx.stroke();
             ctx.restore();
             break;
